@@ -20,8 +20,9 @@ html_content = r"""
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; color: #333; }
     .container { padding: 20px; }
     .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
     .toolbar button, .toolbar select, .toolbar input[type="color"] { font-size: 12px; cursor: pointer; }
+    .toolbar .table-props { margin-left: auto; font-size: 12px; color: #555; }
     .divider { height: 2px; background: #000; margin: 15px 0; }
     .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; }
     .editor-panel { border: 1px solid #ddd; border-radius: 5px; display: flex; flex-direction: column; }
@@ -53,7 +54,7 @@ html_content = r"""
         <option value="h2">H2</option>
         <option value="p">Paragraph</option>
       </select>
-      <button onclick="execCmd('insertUnorderedList')">&bull; List</button>
+      <button onclick="execCmd('insertUnorderedList')">• List</button>
       <button onclick="execCmd('insertOrderedList')">1. List</button>
       <input type="color" title="Text color" onchange="execCmd('foreColor', this.value)">
       <input type="color" title="Background color" onchange="execCmd('backColor', this.value)">
@@ -62,9 +63,11 @@ html_content = r"""
       <button onclick="insertImage()">Image</button>
       <button onclick="execCmd('removeFormat')">Clear</button>
       <button onclick="pasteAsPlainText()">Paste Plain</button>
-      <button onclick="execCmd('undo')">&#x21B6;</button>
-      <button onclick="execCmd('redo')">&#x21B7;</button>
+      <button onclick="execCmd('undo')">↶</button>
+      <button onclick="execCmd('redo')">↷</button>
       <button onclick="openFile()">Open File</button>
+      <!-- Table properties display -->
+      <div class="table-props" id="tableProps">No table selected</div>
     </div>
 
     <div class="divider"></div>
@@ -91,12 +94,16 @@ html_content = r"""
     <div id="tableControls" class="table-controls">
       <label>Width (px):</label>
       <input type="number" id="tableWidth" min="50" placeholder="e.g. 500">
+
       <label>Border (px):</label>
       <input type="number" id="tableBorder" min="0" value="1">
+
       <label>Cell Spacing (px):</label>
       <input type="number" id="tableCellSpacing" min="0" value="0">
+
       <label>Cell Padding (px):</label>
       <input type="number" id="tableCellPadding" min="0" value="8">
+
       <button onclick="applyTableSettings()">Apply</button>
       <button class="close-btn" onclick="closeTableControls()">Close</button>
     </div>
@@ -104,8 +111,12 @@ html_content = r"""
 
   <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
+    const editor      = document.getElementById('editor');
+    const htmlEditor  = document.getElementById('htmlEditor');
+    const fileInput   = document.getElementById('fileInput');
+    const tableProps  = document.getElementById('tableProps');
     let selectedTable = null;
-    let isUpdating = false;
+    let isUpdating    = false;
 
     function execCmd(cmd, val = null) {
       document.execCommand(cmd, false, val);
@@ -119,24 +130,22 @@ html_content = r"""
     function updateHTML() {
       if (isUpdating) return;
       isUpdating = true;
-      const raw = stripAttrs(document.getElementById('editor').innerHTML);
-      document.getElementById('htmlEditor').value =
-        html_beautify(raw, { indent_size: 2, wrap_line_length: 80 });
+      const raw = stripAttrs(editor.innerHTML);
+      htmlEditor.value = html_beautify(raw, { indent_size: 2, wrap_line_length: 80 });
       setTimeout(() => isUpdating = false, 10);
     }
 
     function updateVisual() {
       if (isUpdating) return;
       isUpdating = true;
-      document.getElementById('editor').innerHTML =
-        document.getElementById('htmlEditor').value;
+      editor.innerHTML = htmlEditor.value;
       setTimeout(() => isUpdating = false, 10);
     }
 
     function insertTable() {
-      let rows = prompt('Number of rows:', '3');
-      let cols = prompt('Number of columns:', '3');
-      if (rows && cols) {
+      const rows = parseInt(prompt('Number of rows:', '3'), 10);
+      const cols = parseInt(prompt('Number of columns:', '3'), 10);
+      if (rows > 0 && cols > 0) {
         let tbl = '<table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;">';
         for (let r = 0; r < rows; r++) {
           tbl += '<tr>';
@@ -151,122 +160,6 @@ html_content = r"""
     }
 
     function insertLink() {
-      let url = prompt('URL:', 'https://');
-      let txt = prompt('Link text:', 'Link');
-      if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
-    }
-
-    function insertImage() {
-      let url = prompt('Image URL:', '');
-      let alt = prompt('Alt text:', '');
-      if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
-    }
-
-    function pasteAsPlainText() {
-      if (navigator.clipboard && navigator.clipboard.readText) {
-        navigator.clipboard.readText().then(text => execCmd('insertText', text))
-          .catch(() => {
-            let text = prompt('Paste text:');
-            if (text) execCmd('insertText', text);
-          });
-      } else {
-        let text = prompt('Paste text:');
-        if (text) execCmd('insertText', text);
-      }
-    }
-
-    function openFile() {
-      document.getElementById('fileInput').click();
-    }
-
-    function loadFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        document.getElementById('editor').innerHTML = e.target.result;
-        updateHTML();
-      };
-      reader.readAsText(file);
-    }
-
-    function handleTableSelection(e) {
-      document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
-      let table = e.target.closest('table');
-      if (table) {
-        selectedTable = table;
-        table.classList.add('selected');
-        showTableControls(e);
-      } else {
-        selectedTable = null;
-        closeTableControls();
-      }
-    }
-
-    function showTableControls(e) {
-      const controls = document.getElementById('tableControls');
-      controls.style.display = 'block';
-      controls.style.left = Math.min(e.pageX + 10, window.innerWidth - 280) + 'px';
-      controls.style.top = Math.min(e.pageY + 10, window.innerHeight - 250) + 'px';
-      controls.querySelector('#tableWidth').value = parseInt(selectedTable.style.width) || '';
-      controls.querySelector('#tableBorder').value = selectedTable.getAttribute('border') || 1;
-      controls.querySelector('#tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
-      controls.querySelector('#tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
-    }
-
-    function applyTableSettings() {
-      if (!selectedTable) return;
-      const w = document.getElementById('tableWidth').value;
-      const b = document.getElementById('tableBorder').value;
-      const cs = document.getElementById('tableCellSpacing').value;
-      const cp = document.getElementById('tableCellPadding').value;
-      if (w) {
-        selectedTable.style.width = w + 'px';
-        selectedTable.setAttribute('width', w);
-      }
-      selectedTable.setAttribute('border', b);
-      selectedTable.setAttribute('cellspacing', cs);
-      selectedTable.setAttribute('cellpadding', cp);
-      selectedTable.querySelectorAll('td, th').forEach(cell => {
-        cell.style.padding = cp + 'px';
-      });
-      updateHTML();
-      closeTableControls();
-    }
-
-    function closeTableControls() {
-      document.getElementById('tableControls').style.display = 'none';
-      if (selectedTable) selectedTable.classList.remove('selected');
-      selectedTable = null;
-    }
-
-    function handlePaste(e) {
-      setTimeout(updateHTML, 10);
-    }
-
-    document.addEventListener('keydown', function(event) {
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
-        const map = { 'b': 'bold', 'i': 'italic', 'u': 'underline' };
-        if (map[event.key]) {
-          event.preventDefault();
-          execCmd(map[event.key]);
-        }
-      }
-    });
-
-    document.addEventListener('click', function(e) {
-      const controls = document.getElementById('tableControls');
-      if (!controls.contains(e.target) && !e.target.closest('table') && controls.style.display === 'block') {
-        closeTableControls();
-      }
-    });
-
-    // Initial sync
-    setTimeout(() => { updateHTML(); }, 100);
-  </script>
-</body>
-</html>
-"""
-
-# Inject the HTML into Streamlit
-components.html(html_content, height=800, scrolling=True)
+      const url = prompt('URL:', 'https://');
+      const txt = prompt('Link text:', 'Link');
+      if
