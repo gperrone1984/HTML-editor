@@ -86,16 +86,12 @@ html_content = r"""
     <div id="tableControls" class="table-controls">
       <label>Width (px):</label>
       <input type="number" id="tableWidth" min="50" placeholder="e.g. 500">
-
       <label>Border (px):</label>
       <input type="number" id="tableBorder" min="0" value="1">
-
       <label>Cell Spacing (px):</label>
       <input type="number" id="tableCellSpacing" min="0" value="0">
-
       <label>Cell Padding (px):</label>
       <input type="number" id="tableCellPadding" min="0" value="8">
-
       <button onclick="applyTableSettings()">Apply</button>
       <button class="close-btn" onclick="closeTableControls()">Close</button>
     </div>
@@ -109,18 +105,15 @@ html_content = r"""
     let selectedTable  = null;
     let isUpdating     = false;
 
-    // Core execCommand wrapper
     function execCmd(cmd, val = null) {
       document.execCommand(cmd, false, val);
       updateHTML();
     }
 
-    // Strip inline styles/ids/classes before beautify
     function stripAttrs(html) {
       return html.replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '');
     }
 
-    // Sync Visual → HTML panel
     function updateHTML() {
       if (isUpdating) return;
       isUpdating = true;
@@ -129,7 +122,6 @@ html_content = r"""
       setTimeout(() => isUpdating = false, 10);
     }
 
-    // Sync HTML → Visual panel
     function updateVisual() {
       if (isUpdating) return;
       isUpdating = true;
@@ -137,7 +129,22 @@ html_content = r"""
       setTimeout(() => isUpdating = false, 10);
     }
 
-    // Global selectionchange to catch mouse/text selections
+    // Robust HTML highlighting using regex
+    function highlightInHTML(searchText) {
+      // Escape regex chars
+      const escaped = searchText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      // Replace spaces with \s+ to match whitespace variations
+      const pattern = escaped.replace(/\s+/g, '\\s+');
+      const regex = new RegExp(pattern, 'i');
+      const match = htmlEditor.value.match(regex);
+      if (match) {
+        const start = match.index;
+        const end = start + match[0].length;
+        htmlEditor.focus();
+        htmlEditor.setSelectionRange(start, end);
+      }
+    }
+
     document.addEventListener('selectionchange', () => {
       const sel = window.getSelection();
       if (!sel.rangeCount || sel.isCollapsed) return;
@@ -145,24 +152,17 @@ html_content = r"""
       if (!editor.contains(container)) return;
       const text = sel.toString().trim();
       if (text.length < 2) return;
-      // highlight in HTML textarea
-      const lower = htmlEditor.value.toLowerCase();
-      const idx = lower.indexOf(text.toLowerCase());
-      if (idx !== -1) {
-        htmlEditor.focus();
-        htmlEditor.setSelectionRange(idx, idx + text.length);
-      }
+      highlightInHTML(text);
     });
 
-    // Table insertion
     function insertTable() {
       const rows = parseInt(prompt('Number of rows:', '3'), 10);
       const cols = parseInt(prompt('Number of columns:', '3'), 10);
       if (rows > 0 && cols > 0) {
         let tbl = '<table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;">';
-        for (let r=0; r<rows; r++) {
+        for (let r = 0; r < rows; r++) {
           tbl += '<tr>';
-          for (let c=0; c<cols; c++) {
+          for (let c = 0; c < cols; c++) {
             tbl += `<td style="border:1px solid #ccc;padding:8px;">Cell ${r+1},${c+1}</td>`;
           }
           tbl += '</tr>';
@@ -172,21 +172,18 @@ html_content = r"""
       }
     }
 
-    // Link insertion
     function insertLink() {
       const url = prompt('URL:', 'https://');
       const txt = prompt('Link text:', 'Link');
       if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
     }
 
-    // Image insertion
     function insertImage() {
       const url = prompt('Image URL:', '');
       const alt = prompt('Alt text:', '');
       if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
     }
 
-    // Plain-text paste
     function pasteAsPlainText() {
       if (navigator.clipboard && navigator.clipboard.readText) {
         navigator.clipboard.readText()
@@ -201,8 +198,9 @@ html_content = r"""
       }
     }
 
-    // Open local file
-    function openFile() { fileInput.click(); }
+    function openFile() {
+      fileInput.click();
+    }
     function loadFile(e) {
       const f = e.target.files[0];
       if (!f) return;
@@ -214,9 +212,8 @@ html_content = r"""
       reader.readAsText(f);
     }
 
-    // Table selection & controls
     function handleTableSelection(e) {
-      document.querySelectorAll('table.selected').forEach(t=>t.classList.remove('selected'));
+      document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
       const tbl = e.target.closest('table');
       if (tbl) {
         selectedTable = tbl;
@@ -230,13 +227,13 @@ html_content = r"""
     function showTableControls(x, y) {
       const ctl = document.getElementById('tableControls');
       ctl.style.display = 'block';
-      ctl.style.left = Math.min(x+10, window.innerWidth-280)+'px';
-      ctl.style.top  = Math.min(y+10, window.innerHeight-250)+'px';
+      ctl.style.left = Math.min(x + 10, window.innerWidth - 280) + 'px';
+      ctl.style.top  = Math.min(y + 10, window.innerHeight - 250) + 'px';
 
-      document.getElementById('tableWidth').value         = parseInt(selectedTable.style.width) || '';
-      document.getElementById('tableBorder').value        = selectedTable.getAttribute('border') || 1;
-      document.getElementById('tableCellSpacing').value   = selectedTable.getAttribute('cellspacing')||0;
-      document.getElementById('tableCellPadding').value   = selectedTable.getAttribute('cellpadding')||8;
+      document.getElementById('tableWidth').value        = parseInt(selectedTable.style.width) || '';
+      document.getElementById('tableBorder').value       = selectedTable.getAttribute('border') || 1;
+      document.getElementById('tableCellSpacing').value  = selectedTable.getAttribute('cellspacing') || 0;
+      document.getElementById('tableCellPadding').value  = selectedTable.getAttribute('cellpadding') || 8;
     }
 
     function applyTableSettings() {
@@ -247,9 +244,9 @@ html_content = r"""
       const cp = document.getElementById('tableCellPadding').value;
 
       if (w)  { selectedTable.style.width = w + 'px'; selectedTable.setAttribute('width', w); }
-      selectedTable.setAttribute('border',       b);
-      selectedTable.setAttribute('cellspacing',  cs);
-      selectedTable.setAttribute('cellpadding',  cp);
+      selectedTable.setAttribute('border',      b);
+      selectedTable.setAttribute('cellspacing', cs);
+      selectedTable.setAttribute('cellpadding', cp);
 
       selectedTable.querySelectorAll('td,th').forEach(cell => {
         cell.style.padding = cp + 'px';
@@ -266,14 +263,12 @@ html_content = r"""
       selectedTable = null;
     }
 
-    // Paste handler
     function handlePaste(e) {
       setTimeout(updateHTML, 10);
     }
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', e => {
-      if ((e.ctrlKey||e.metaKey) && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
         const map = { 'b':'bold', 'i':'italic', 'u':'underline' };
         if (map[e.key]) {
           e.preventDefault();
@@ -282,17 +277,15 @@ html_content = r"""
       }
     });
 
-    // Click outside table controls closes them
     document.addEventListener('click', e => {
       const ctl = document.getElementById('tableControls');
-      if (ctl.style.display==='block'
+      if (ctl.style.display === 'block'
           && !ctl.contains(e.target)
           && !e.target.closest('table')) {
         closeTableControls();
       }
     });
 
-    // Initial sync
     setTimeout(updateHTML, 100);
   </script>
 </body>
