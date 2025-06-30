@@ -1,17 +1,101 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import os
 
-# Configure the Streamlit page
+# Configure the Streamlit page to use full width
 st.set_page_config(
     page_title="WYSIWYG HTML Editor",
     layout="wide",
 )
 
-# Load the external HTML file
-html_path = os.path.join(os.path.dirname(__file__), "editor.html")
-with open(html_path, "r", encoding="utf-8") as f:
-    html_content = f.read()
-
-# Render it in Streamlit
-components.html(html_content, height=800, scrolling=True)
+# Embed the full HTML/CSS/JS for the editor
+html_content = r"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYSIWYG HTML Editor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; color: #333; }
+    .container { padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+    .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .toolbar button, .toolbar select, .toolbar input[type="color"] { font-size: 12px; cursor: pointer; }
+    .toolbar .table-props { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .toolbar .table-props input { width: 60px; padding: 2px 4px; font-size: 12px; }
+    .toolbar .table-props button { font-size: 12px; padding: 4px 8px; }
+    .divider { height: 2px; background: #000; margin: 15px 0; }
+    .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; }
+    .editor-panel { border: 1px solid #ddd; border-radius: 5px; display: flex; flex-direction: column; }
+    .panel-header { background: #f0f0f0; padding: 10px; font-weight: bold; border-bottom: 1px solid #ddd; }
+    .editor, .html-editor { flex: 1; padding: 15px; outline: none; font-size: 14px; line-height: 1.6; overflow-y: auto; }
+    .editor { border: none; }
+    .html-editor { border: 1px solid #ddd; background: #f8f8f8; font-family: Consolas, 'Courier New', monospace; white-space: pre-wrap; }
+    .table-controls { display: none; position: fixed; background: #fff; border: 2px solid #007acc; padding: 15px; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 260px; }
+    .table-controls label { margin-bottom: 5px; font-weight: bold; display: block; }
+    .table-controls input, .table-controls button { font-size: 12px; }
+    .table-controls input { width: 100%; margin-bottom: 10px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+    .table-controls button { margin-right: 5px; padding: 8px 12px; border: none; border-radius: 3px; color: #fff; background: #007acc; cursor: pointer; }
+    .table-controls button:hover { background: #005999; }
+    .table-controls .close-btn { background: #ccc; color: #333; }
+    table.selected { outline: 2px solid #007acc; background: rgba(0,122,204,0.1); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>WYSIWYG HTML Editor</h1></div>
+    <div class="toolbar">
+      <button onclick="execCmd('bold')"><b>B</b></button>
+      <button onclick="execCmd('italic')"><i>I</i></button>
+      <button onclick="execCmd('underline')"><u>U</u></button>
+      <button onclick="execCmd('strikeThrough')"><s>S</s></button>
+      <select onchange="execCmd('formatBlock', this.value)">
+        <option value="">Format</option>
+        <option value="h1">H1</option>
+        <option value="h2">H2</option>
+        <option value="p">Paragraph</option>
+      </select>
+      <button onclick="execCmd('insertUnorderedList')">• List</button>
+      <button onclick="execCmd('insertOrderedList')">1. List</button>
+      <input type="color" title="Text color" onchange="execCmd('foreColor', this.value)">
+      <input type="color" title="Background color" onchange="execCmd('backColor', this.value)">
+      <button onclick="insertTable()">Table</button>
+      <button onclick="insertLink()">Link</button>
+      <button onclick="insertImage()">Image</button>
+      <button onclick="execCmd('removeFormat')">Clear</button>
+      <button onclick="pasteAsPlainText()">Paste Plain</button>
+      <button onclick="execCmd('undo')">↶</button>
+      <button onclick="execCmd('redo')">↷</button>
+      <button onclick="openFile()">Open File</button>
+      <div class="table-props">
+        Width: <input type="number" id="propWidth" min="1" placeholder="px">
+        Border: <input type="number" id="propBorder" min="0">
+        Cellspacing: <input type="number" id="propCellSpacing" min="0">
+        Cellpadding: <input type="number" id="propCellPadding" min="0">
+        <button id="applyProps">Apply</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="editor-container">
+      <div class="editor-panel">
+        <div class="panel-header">Visual</div>
+        <div id="editor" class="editor" contenteditable="true" oninput="updateHTML()" onkeyup="updateHTML()" onclick="handleTableSelection(event)" onpaste="handlePaste(event)">
+          <h2>Start typing...</h2>
+        </div>
+      </div>
+      <div class="editor-panel">
+        <div class="panel-header">HTML</div>
+        <textarea id="htmlEditor" class="html-editor" oninput="updateVisual()" onkeyup="updateVisual()" placeholder="Clean HTML code..."></textarea>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".html,.txt" style="display:none" onchange="loadFile(event)">
+    <div id="tableControls" class="table-controls">
+      <label>Width (px):</label>
+      <input type="number" id="tableWidth" min="50" placeholder="e.g. 500">
+      <label>Border (px):</label>
+      <input type="number" id="tableBorder" min="0" value="1">
+      <label>Cell Spacing (px):</label>
+      <input type="number" id="tableCellSpacing" min="0" value="0">
+      <label>Cell Padding (px):</label>
+      <input type="number
