@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 # The HTML/CSS/JS for the editor
-tml = r"""
+html = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
