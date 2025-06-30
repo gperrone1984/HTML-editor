@@ -106,22 +106,10 @@ html_content = r"""
     </div>
     <input type="file" id="fileInput" accept=".html,.txt" style="display:none" onchange="loadFile(event)">
     
-    <!-- Controlli tabella migliorati -->
+    <!-- Controlli tabella semplificati -->
     <div class="table-controls" id="tableControls">
-      <label>Larghezza:</label>
-      <select id="tableWidthType" onchange="toggleWidthInput()">
-        <option value="px">Pixel (px)</option>
-        <option value="%">Percentuale (%)</option>
-        <option value="auto">Auto</option>
-      </select>
-      <input type="number" id="tableWidthValue" min="1" placeholder="Valore">
-      
-      <label>Altezza:</label>
-      <select id="tableHeightType">
-        <option value="px">Pixel (px)</option>
-        <option value="auto">Auto</option>
-      </select>
-      <input type="number" id="tableHeightValue" min="1" placeholder="Valore">
+      <label>Larghezza (px):</label>
+      <input type="number" id="tableWidth" min="1" placeholder="es. 500">
       
       <label>Bordo (px):</label>
       <input type="number" id="tableBorder" min="0" value="1">
@@ -133,9 +121,6 @@ html_content = r"""
       <input type="number" id="tableCellPadding" min="0" value="8">
       
       <button onclick="applyTableSettings()">Applica</button>
-      <button onclick="addTableRow()">+ Riga</button>
-      <button onclick="addTableColumn()">+ Colonna</button>
-      <button onclick="deleteTable()">Elimina</button>
       <button class="close-btn" onclick="closeTableControls()">Chiudi</button>
     </div>
   </div>
@@ -176,6 +161,59 @@ html_content = r"""
     }
     
     // Gestione selezione sincronizzata
+    function handleSelectionChange() {
+      if (isUpdatingFromHTML) return;
+      
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection.rangeCount === 0) return;
+        
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) return;
+        
+        const selectedText = range.toString().trim();
+        if (selectedText.length < 3) return; // Ignora selezioni troppo corte
+        
+        // Evidenzia nel HTML
+        highlightInHTML(selectedText);
+      }, 100);
+    }
+    
+    function handleHTMLSelection() {
+      const htmlEditor = document.getElementById('htmlEditor');
+      const start = htmlEditor.selectionStart;
+      const end = htmlEditor.selectionEnd;
+      
+      if (start === end) return;
+      
+      const selectedHTML = htmlEditor.value.substring(start, end).trim();
+      if (selectedHTML.length < 3) return;
+      
+      // Trova il testo corrispondente nel visual editor
+      highlightInVisual(selectedHTML);
+    }
+    
+    function clearHighlights() {
+      // Rimuovi evidenziazioni precedenti
+      const htmlEditor = document.getElementById('htmlEditor');
+      const currentValue = htmlEditor.value;
+      
+      // Rimuovi tag di evidenziazione dall'HTML
+      const cleanValue = currentValue.replace(/<mark class="highlight-html">/g, '').replace(/<\/mark>/g, '');
+      if (cleanValue !== currentValue) {
+        htmlEditor.value = cleanValue;
+      }
+    }
+    
+    function highlightInHTML(selectedText) {
+      const htmlEditor = document.getElementById('htmlEditor');
+      const htmlContent = htmlEditor.value;
+      
+      // Pulisci eventuali evidenziazioni precedenti
+      clearHighlights();
+      
+      // Cerca il testo nell'HTML e lo evidenzia
+      const escapedText = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Gestione selezione sincronizzata
     function handleSelectionChange() {
       if (isUpdatingFromHTML) return;
       
@@ -243,6 +281,52 @@ html_content = r"""
       setTimeout(() => {
         editor.classList.remove('highlight-visual');
       }, 2000);
+    }');
+      const regex = new RegExp(`(>${escapedText}<|>${escapedText}|${escapedText}<)`, 'gi');
+      
+      if (regex.test(htmlContent)) {
+        const index = htmlContent.search(regex);
+        if (index !== -1) {
+          htmlEditor.focus();
+          htmlEditor.setSelectionRange(index, index + selectedText.length);
+          htmlEditor.scrollTop = Math.max(0, (index / htmlContent.length) * htmlEditor.scrollHeight - htmlEditor.clientHeight / 2);
+        }
+      }
+    }
+    
+    function highlightInVisual(htmlText) {
+      // Rimuovi tag HTML per ottenere solo il testo
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlText;
+      const textContent = tempDiv.textContent || tempDiv.innerText || '';
+      
+      if (textContent.length < 3) return;
+      
+      // Cerca e evidenzia nel visual editor
+      const editor = document.getElementById('editor');
+      const walker = document.createTreeWalker(
+        editor,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+      
+      let node;
+      while (node = walker.nextNode()) {
+        if (node.textContent.includes(textContent)) {
+          const range = document.createRange();
+          const start = node.textContent.indexOf(textContent);
+          if (start !== -1) {
+            range.setStart(node, start);
+            range.setEnd(node, start + textContent.length);
+            
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            break;
+          }
+        }
+      }
     }
     
     function insertTable() {
@@ -310,80 +394,28 @@ html_content = r"""
       const controls = document.getElementById('tableControls');
       controls.style.display = 'block';
       controls.style.left = Math.min(e.pageX, window.innerWidth - 300) + 'px';
-      controls.style.top = Math.min(e.pageY, window.innerHeight - 400) + 'px';
+      controls.style.top = Math.min(e.pageY, window.innerHeight - 200) + 'px';
       
       if (selectedTable) {
         // Carica valori correnti
-        const computedStyle = window.getComputedStyle(selectedTable);
         const currentWidth = selectedTable.style.width || selectedTable.getAttribute('width') || '';
-        const currentHeight = selectedTable.style.height || '';
+        const widthValue = currentWidth.replace('px', '').replace('%', '');
         
-        // Imposta larghezza
-        if (currentWidth.includes('%')) {
-          document.getElementById('tableWidthType').value = '%';
-          document.getElementById('tableWidthValue').value = parseInt(currentWidth);
-        } else if (currentWidth.includes('px')) {
-          document.getElementById('tableWidthType').value = 'px';
-          document.getElementById('tableWidthValue').value = parseInt(currentWidth);
-        } else {
-          document.getElementById('tableWidthType').value = 'auto';
-          document.getElementById('tableWidthValue').value = '';
-        }
-        
-        // Imposta altezza
-        if (currentHeight.includes('px')) {
-          document.getElementById('tableHeightType').value = 'px';
-          document.getElementById('tableHeightValue').value = parseInt(currentHeight);
-        } else {
-          document.getElementById('tableHeightType').value = 'auto';
-          document.getElementById('tableHeightValue').value = '';
-        }
-        
+        document.getElementById('tableWidth').value = widthValue;
         document.getElementById('tableBorder').value = selectedTable.getAttribute('border') || 1;
         document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
         document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
-      }
-      
-      toggleWidthInput();
-    }
-    
-    function toggleWidthInput() {
-      const widthType = document.getElementById('tableWidthType').value;
-      const widthInput = document.getElementById('tableWidthValue');
-      
-      if (widthType === 'auto') {
-        widthInput.style.display = 'none';
-        widthInput.value = '';
-      } else {
-        widthInput.style.display = 'block';
-        widthInput.placeholder = `Valore in ${widthType}`;
       }
     }
     
     function applyTableSettings() {
       if (!selectedTable) return;
       
-      // Applica larghezza
-      const widthType = document.getElementById('tableWidthType').value;
-      const widthValue = document.getElementById('tableWidthValue').value;
-      
-      if (widthType === 'auto') {
-        selectedTable.style.width = 'auto';
-        selectedTable.removeAttribute('width');
-      } else if (widthValue) {
-        const width = widthValue + widthType;
-        selectedTable.style.width = width;
-        selectedTable.setAttribute('width', width);
-      }
-      
-      // Applica altezza
-      const heightType = document.getElementById('tableHeightType').value;
-      const heightValue = document.getElementById('tableHeightValue').value;
-      
-      if (heightType === 'auto') {
-        selectedTable.style.height = 'auto';
-      } else if (heightValue) {
-        selectedTable.style.height = heightValue + 'px';
+      // Applica larghezza in pixel
+      const widthValue = document.getElementById('tableWidth').value;
+      if (widthValue) {
+        selectedTable.style.width = widthValue + 'px';
+        selectedTable.setAttribute('width', widthValue + 'px');
       }
       
       // Applica altri attributi
@@ -391,7 +423,7 @@ html_content = r"""
       selectedTable.setAttribute('cellspacing', document.getElementById('tableCellSpacing').value);
       selectedTable.setAttribute('cellpadding', document.getElementById('tableCellPadding').value);
       
-      // Applica stili alle celle
+      // Applica padding alle celle
       const cells = selectedTable.querySelectorAll('td, th');
       const padding = document.getElementById('tableCellPadding').value + 'px';
       cells.forEach(cell => {
@@ -400,52 +432,6 @@ html_content = r"""
       
       updateHTML();
       closeTableControls();
-    }
-    
-    function addTableRow() {
-      if (!selectedTable) return;
-      
-      const rows = selectedTable.querySelectorAll('tr');
-      const lastRow = rows[rows.length - 1];
-      const cellCount = lastRow.children.length;
-      
-      const newRow = document.createElement('tr');
-      for (let i = 0; i < cellCount; i++) {
-        const cell = document.createElement('td');
-        cell.style.border = '1px solid #ccc';
-        cell.style.padding = document.getElementById('tableCellPadding').value + 'px';
-        cell.textContent = 'Nuova cella';
-        newRow.appendChild(cell);
-      }
-      
-      selectedTable.appendChild(newRow);
-      updateHTML();
-    }
-    
-    function addTableColumn() {
-      if (!selectedTable) return;
-      
-      const rows = selectedTable.querySelectorAll('tr');
-      rows.forEach(row => {
-        const cell = document.createElement('td');
-        cell.style.border = '1px solid #ccc';
-        cell.style.padding = document.getElementById('tableCellPadding').value + 'px';
-        cell.textContent = 'Nuova cella';
-        row.appendChild(cell);
-      });
-      
-      updateHTML();
-    }
-    
-    function deleteTable() {
-      if (!selectedTable) return;
-      
-      if (confirm('Sei sicuro di voler eliminare questa tabella?')) {
-        selectedTable.remove();
-        selectedTable = null;
-        closeTableControls();
-        updateHTML();
-      }
     }
     
     function closeTableControls() {
