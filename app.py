@@ -54,7 +54,7 @@ html_content = r"""
         <option value="h2">H2</option>
         <option value="p">Paragraph</option>
       </select>
-      <button onclick="execCmd('insertUnorderedList')">• List</button>
+      <button onclick="execCmd('insertUnorderedList')">&bull; List</button>
       <button onclick="execCmd('insertOrderedList')">1. List</button>
       <input type="color" title="Text color" onchange="execCmd('foreColor', this.value)">
       <input type="color" title="Background color" onchange="execCmd('backColor', this.value)">
@@ -150,7 +150,7 @@ html_content = r"""
         for (let r = 0; r < rows; r++) {
           tbl += '<tr>';
           for (let c = 0; c < cols; c++) {
-            tbl += `<td style="border:1px solid #ccc;padding:8px;">Cell ${r+1},${c+1}</td>`;
+            tbl += `<td style="border:1px solid #ccc; padding:8px;">Cell ${r+1},${c+1}></td>`;
           }
           tbl += '</tr>';
         }
@@ -162,4 +162,68 @@ html_content = r"""
     function insertLink() {
       const url = prompt('URL:', 'https://');
       const txt = prompt('Link text:', 'Link');
-      if
+      if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
+    }
+
+    function insertImage() {
+      const url = prompt('Image URL:', '');
+      const alt = prompt('Alt text:', '');
+      if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
+    }
+
+    function pasteAsPlainText() {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText()
+          .then(txt => execCmd('insertText', txt))
+          .catch(() => {
+            const t = prompt('Paste text:');
+            if (t) execCmd('insertText', t);
+          });
+      } else {
+        const t = prompt('Paste text:');
+        if (t) execCmd('insertText', t);
+      }
+    }
+
+    function openFile() { fileInput.click(); }
+    function loadFile(e) {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = evt => { editor.innerHTML = evt.target.result; updateHTML(); };
+      r.readAsText(f);
+    }
+
+    function handleTableSelection(e) {
+      document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
+      const tbl = e.target.closest('table');
+      if (tbl) {
+        selectedTable = tbl; tbl.classList.add('selected'); showTableControls(e.pageX, e.pageY);
+      } else { closeTableControls(); }
+    }
+
+    function showTableControls(x, y) {
+      const ctl = document.getElementById('tableControls'); ctl.style.display = 'block';
+      ctl.style.left = Math.min(x+10, window.innerWidth-280)+'px'; ctl.style.top = Math.min(y+10, window.innerHeight-250)+'px';
+      document.getElementById('tableWidth').value       = parseInt(selectedTable.style.width) || '';
+      document.getElementById('tableBorder').value      = selectedTable.getAttribute('border') || 1;
+      document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing')||0;
+      document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding')||8;
+      // Update props display
+      tableProps.textContent = `Width: ${selectedTable.getAttribute('width') || ''}px | Border: ${selectedTable.getAttribute('border')} | Cellspacing: ${selectedTable.getAttribute('cellspacing')} | Cellpadding: ${selectedTable.getAttribute('cellpadding')}`;
+    }
+
+    function applyTableSettings() {
+      if (!selectedTable) return;
+      const w = document.getElementById('tableWidth').value;
+      const b = document.getElementById('tableBorder').value;
+      const cs= document.getElementById('tableCellSpacing').value;
+      const cp= document.getElementById('tableCellPadding').value;
+      if (w) { selectedTable.style.width = w+'px'; selectedTable.setAttribute('width', w); }
+      selectedTable.setAttribute('border', b); selectedTable.setAttribute('cellspacing', cs); selectedTable.setAttribute('cellpadding', cp);
+      selectedTable.querySelectorAll('td,th').forEach(cell => cell.style.padding = cp+'px');
+      updateHTML(); closeTableControls();
+    }
+
+    function closeTableControls() { document.getElementById('tableControls').style.display = 'none'; if(selectedTable) selectedTable.classList.remove('}`,`
+}]}
