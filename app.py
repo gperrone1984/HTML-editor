@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 # The HTML/CSS/JS for the editor
-tml = r"""
+html_content = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,8 +63,8 @@ tml = r"""
       <button onclick="insertImage()">Image</button>
       <button onclick="execCmd('removeFormat')">Clear</button>
       <button onclick="pasteAsPlainText()">Paste Plain</button>
-      <button onclick="execCmd('undo')">↶</button>
-      <button onclick="execCmd('redo')">↷</button>
+      <button onclick="execCmd('undo')">&#x21B6;</button>
+      <button onclick="execCmd('redo')">&#x21B7;</button>
       <button onclick="openFile()">Open File</button>
       <div class="table-props" id="tableProps">No table selected</div>
     </div>
@@ -74,13 +74,19 @@ tml = r"""
     <div class="editor-container">
       <div class="editor-panel">
         <div class="panel-header">Visual</div>
-        <div id="editor" class="editor" contenteditable="true" oninput="updateHTML()" onkeyup="updateHTML()" onclick="handleTableSelection(event)" onpaste="handlePaste(event)">
+        <div id="editor" class="editor"
+             contenteditable="true"
+             oninput="updateHTML()" onkeyup="updateHTML()"
+             onclick="handleTableSelection(event)"
+             onpaste="handlePaste(event)">
           <h2>Start typing...</h2>
         </div>
       </div>
       <div class="editor-panel">
         <div class="panel-header">HTML</div>
-        <textarea id="htmlEditor" class="html-editor" oninput="updateVisual()" onkeyup="updateVisual()" placeholder="Clean HTML code..."></textarea>
+        <textarea id="htmlEditor" class="html-editor"
+                  oninput="updateVisual()" onkeyup="updateVisual()"
+                  placeholder="Clean HTML code..."></textarea>
       </div>
     </div>
 
@@ -141,7 +147,7 @@ tml = r"""
         for (let r = 0; r < rows; r++) {
           tbl += '<tr>';
           for (let c = 0; c < cols; c++) {
-            tbl += `<td style="border:1px solid #ccc; padding:8px;">Cell ${r+1},${c+1}</td>`;
+            tbl += `<td style="border:1px solid #ccc;padding:8px;">Cell ${r+1},${c+1}</td>`;
           }
           tbl += '</tr>';
         }
@@ -176,12 +182,18 @@ tml = r"""
       }
     }
 
-    function openFile() { fileInput.click(); }
+    function openFile() {
+      fileInput.click();
+    }
+
     function loadFile(event) {
       const f = event.target.files[0];
       if (!f) return;
       const reader = new FileReader();
-      reader.onload = e => { editor.innerHTML = e.target.result; updateHTML(); };
+      reader.onload = e => {
+        editor.innerHTML = e.target.result;
+        updateHTML();
+      };
       reader.readAsText(f);
     }
 
@@ -202,7 +214,72 @@ tml = r"""
       ctl.style.display = 'block';
       ctl.style.left = Math.min(x + 10, window.innerWidth - 280) + 'px';
       ctl.style.top = Math.min(y + 10, window.innerHeight - 250) + 'px';
+      // populate controls
+      document.getElementById('tableWidth').value = selectedTable.getAttribute('width') || '';
+      document.getElementById('tableBorder').value = selectedTable.getAttribute('border') || 1;
+      document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
+      document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
+      // update toolbar display
       const w = selectedTable.getAttribute('width') || '';
       const b = selectedTable.getAttribute('border');
       const cs = selectedTable.getAttribute('cellspacing');
-      const cp = selectedTable
+      const cp = selectedTable.getAttribute('cellpadding');
+      tableProps.textContent = `Width: ${w}px | Border: ${b} | Cellspacing: ${cs} | Cellpadding: ${cp}`;
+    }
+
+    function applyTableSettings() {
+      if (!selectedTable) return;
+      const w = document.getElementById('tableWidth').value;
+      const b = document.getElementById('tableBorder').value;
+      const cs = document.getElementById('tableCellSpacing').value;
+      const cp = document.getElementById('tableCellPadding').value;
+      if (w) { selectedTable.style.width = w + 'px'; selectedTable.setAttribute('width', w); }
+      selectedTable.setAttribute('border', b);
+      selectedTable.setAttribute('cellspacing', cs);
+      selectedTable.setAttribute('cellpadding', cp);
+      selectedTable.querySelectorAll('td, th').forEach(cell => {
+        cell.style.padding = cp + 'px';
+      });
+      updateHTML();
+      closeTableControls();
+    }
+
+    function closeTableControls() {
+      document.getElementById('tableControls').style.display = 'none';
+      if (selectedTable) selectedTable.classList.remove('selected');
+      selectedTable = null;
+      tableProps.textContent = 'No table selected';
+    }
+
+    function handlePaste(e) {
+      setTimeout(updateHTML, 10);
+    }
+
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        const map = { b: 'bold', i: 'italic', u: 'underline' };
+        if (map[e.key]) {
+          e.preventDefault();
+          execCmd(map[e.key]);
+        }
+      }
+    });
+
+    document.addEventListener('click', e => {
+      const ctl = document.getElementById('tableControls');
+      if (ctl.style.display === 'block' &&
+          !ctl.contains(e.target) &&
+          !e.target.closest('table')) {
+        closeTableControls();
+      }
+    });
+
+    // Initial sync
+    setTimeout(updateHTML, 100);
+  </script>
+</body>
+</html>
+"""
+
+# Inject the HTML into Streamlit
+components.html(html_content, height=800, scrolling=True)
