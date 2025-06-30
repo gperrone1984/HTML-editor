@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYSIWYG HTML Editor</title>
+  <style>
+    /* …all your existing CSS… */
+    .toolbar .table-props input {
+      width: 60px;
+      margin: 0 4px;
+      font-size: 12px;
+    }
+    .toolbar .table-props button {
+      padding: 4px 8px;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <!-- …your buttons… -->
+    <div class="table-props">
+      Width: <input type="number" id="propWidth" min="1" placeholder="px">
+      Border: <input type="number" id="propBorder" min="0">
+      Cellspacing: <input type="number" id="propCellSpacing" min="0">
+      Cellpadding: <input type="number" id="propCellPadding" min="0">
+      <button id="applyProps">Apply</button>
+    </div>
+  </div>
+
+  <!-- …the rest of your editor HTML… -->
+
+  <script>
+    // Grab the new inputs & apply button
+    const propWidth       = document.getElementById("propWidth");
+    const propBorder      = document.getElementById("propBorder");
+    const propCellSpacing = document.getElementById("propCellSpacing");
+    const propCellPadding = document.getElementById("propCellPadding");
+    const applyPropsBtn   = document.getElementById("applyProps");
+
+    // Call this whenever a table is selected
+    function updateToolbarInputs() {
+      if (!selectedTable) return;
+      propWidth.value       = selectedTable.getAttribute("width")      || "";
+      propBorder.value      = selectedTable.getAttribute("border")     || "";
+      propCellSpacing.value = selectedTable.getAttribute("cellspacing")|| "";
+      propCellPadding.value = selectedTable.getAttribute("cellpadding")|| "";
+    }
+
+    // When you click “Apply”, update the actual <table> attributes
+    applyPropsBtn.addEventListener("click", () => {
+      if (!selectedTable) return;
+      if (propWidth.value)       selectedTable.setAttribute("width", propWidth.value);
+      if (propBorder.value)      selectedTable.setAttribute("border", propBorder.value);
+      if (propCellSpacing.value) selectedTable.setAttribute("cellspacing", propCellSpacing.value);
+      if (propCellPadding.value) selectedTable.setAttribute("cellpadding", propCellPadding.value);
+      // Refresh HTML panel
+      updateHTML();
+    });
+
+    // In your existing showTableControls(x,y) function, at the end:
+    //    showTableControls(...) { …; updateToolbarInputs(); }
+  </script>
+</body>
+</html>
