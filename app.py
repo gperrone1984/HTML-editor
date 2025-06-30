@@ -1,8 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="WYSIWYG HTML Editor", layout="wide")
+# Configure the Streamlit page
+st.set_page_config(
+    page_title="WYSIWYG HTML Editor",
+    layout="wide",
+)
 
+# The HTML/CSS/JS for the editor
 html_content = r"""
 <!DOCTYPE html>
 <html lang="en">
@@ -11,26 +16,26 @@ html_content = r"""
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WYSIWYG HTML Editor</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#fff; color:#333; }
-    .container { padding:20px; }
-    .header { text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:10px; }
-    .toolbar { background:#f5f5f5; padding:10px; border:1px solid #ddd; border-radius:5px; display:flex; flex-wrap:wrap; gap:5px; }
-    .toolbar button, .toolbar select, .toolbar input[type="color"] { font-size:12px; cursor:pointer; }
-    .divider { height:2px; background:#000; margin:15px 0; }
-    .editor-container { display:grid; grid-template-columns:1fr 1fr; gap:20px; height:600px; }
-    .editor-panel { border:1px solid #ddd; border-radius:5px; display:flex; flex-direction:column; }
-    .panel-header { background:#f0f0f0; padding:10px; font-weight:bold; border-bottom:1px solid #ddd; }
-    .editor, .html-editor { flex:1; padding:15px; outline:none; font-size:14px; line-height:1.6; overflow-y:auto; }
-    .editor { border:none; }
-    .html-editor { border:1px solid #ddd; background:#f8f8f8; font-family:Consolas,'Courier New',monospace; white-space:pre-wrap; }
-    .table-controls { display:none; position:fixed; background:#fff; border:2px solid #007acc; padding:15px; border-radius:5px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; width:260px; }
-    .table-controls label { margin-bottom:5px; font-weight:bold; display:block; }
-    .table-controls input { width:100%; margin-bottom:10px; padding:5px; border:1px solid #ccc; border-radius:3px; }
-    .table-controls button { margin-right:5px; padding:8px 12px; border:none; border-radius:3px; color:#fff; background:#007acc; cursor:pointer; }
-    .table-controls button:hover { background:#005999; }
-    .table-controls .close-btn { background:#ccc; color:#333; }
-    table.selected { outline:2px solid #007acc; background:rgba(0,122,204,0.1); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; color: #333; }
+    .container { padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+    .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .toolbar button, .toolbar select, .toolbar input[type="color"] { font-size: 12px; cursor: pointer; }
+    .divider { height: 2px; background: #000; margin: 15px 0; }
+    .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; }
+    .editor-panel { border: 1px solid #ddd; border-radius: 5px; display: flex; flex-direction: column; }
+    .panel-header { background: #f0f0f0; padding: 10px; font-weight: bold; border-bottom: 1px solid #ddd; }
+    .editor, .html-editor { flex: 1; padding: 15px; outline: none; font-size: 14px; line-height: 1.6; overflow-y: auto; }
+    .editor { border: none; }
+    .html-editor { border: 1px solid #ddd; background: #f8f8f8; font-family: Consolas, 'Courier New', monospace; white-space: pre-wrap; }
+    .table-controls { display: none; position: fixed; background: #fff; border: 2px solid #007acc; padding: 15px; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; width: 260px; }
+    .table-controls label { margin-bottom: 5px; font-weight: bold; display: block; }
+    .table-controls input { width: 100%; margin-bottom: 10px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+    .table-controls button { margin-right: 5px; padding: 8px 12px; border: none; border-radius: 3px; color: #fff; background: #007acc; cursor: pointer; }
+    .table-controls button:hover { background: #005999; }
+    .table-controls .close-btn { background: #ccc; color: #333; }
+    table.selected { outline: 2px solid #007acc; background: rgba(0,122,204,0.1); }
   </style>
 </head>
 <body>
@@ -99,11 +104,8 @@ html_content = r"""
 
   <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
-    const editor       = document.getElementById('editor');
-    const htmlEditor   = document.getElementById('htmlEditor');
-    const fileInput    = document.getElementById('fileInput');
-    let selectedTable  = null;
-    let isUpdating     = false;
+    let selectedTable = null;
+    let isUpdating = false;
 
     function execCmd(cmd, val = null) {
       document.execCommand(cmd, false, val);
@@ -117,48 +119,24 @@ html_content = r"""
     function updateHTML() {
       if (isUpdating) return;
       isUpdating = true;
-      const raw = stripAttrs(editor.innerHTML);
-      htmlEditor.value = html_beautify(raw, { indent_size:2, wrap_line_length:80 });
+      const raw = stripAttrs(document.getElementById('editor').innerHTML);
+      document.getElementById('htmlEditor').value =
+        html_beautify(raw, { indent_size: 2, wrap_line_length: 80 });
       setTimeout(() => isUpdating = false, 10);
     }
 
     function updateVisual() {
       if (isUpdating) return;
       isUpdating = true;
-      editor.innerHTML = htmlEditor.value;
+      document.getElementById('editor').innerHTML =
+        document.getElementById('htmlEditor').value;
       setTimeout(() => isUpdating = false, 10);
     }
 
-    // Robust HTML highlighting using regex
-    function highlightInHTML(searchText) {
-      // Escape regex chars
-      const escaped = searchText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      // Replace spaces with \s+ to match whitespace variations
-      const pattern = escaped.replace(/\s+/g, '\\s+');
-      const regex = new RegExp(pattern, 'i');
-      const match = htmlEditor.value.match(regex);
-      if (match) {
-        const start = match.index;
-        const end = start + match[0].length;
-        htmlEditor.focus();
-        htmlEditor.setSelectionRange(start, end);
-      }
-    }
-
-    document.addEventListener('selectionchange', () => {
-      const sel = window.getSelection();
-      if (!sel.rangeCount || sel.isCollapsed) return;
-      const container = sel.getRangeAt(0).commonAncestorContainer;
-      if (!editor.contains(container)) return;
-      const text = sel.toString().trim();
-      if (text.length < 2) return;
-      highlightInHTML(text);
-    });
-
     function insertTable() {
-      const rows = parseInt(prompt('Number of rows:', '3'), 10);
-      const cols = parseInt(prompt('Number of columns:', '3'), 10);
-      if (rows > 0 && cols > 0) {
+      let rows = prompt('Number of rows:', '3');
+      let cols = prompt('Number of columns:', '3');
+      if (rows && cols) {
         let tbl = '<table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;">';
         for (let r = 0; r < rows; r++) {
           tbl += '<tr>';
@@ -173,92 +151,91 @@ html_content = r"""
     }
 
     function insertLink() {
-      const url = prompt('URL:', 'https://');
-      const txt = prompt('Link text:', 'Link');
+      let url = prompt('URL:', 'https://');
+      let txt = prompt('Link text:', 'Link');
       if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
     }
 
     function insertImage() {
-      const url = prompt('Image URL:', '');
-      const alt = prompt('Alt text:', '');
+      let url = prompt('Image URL:', '');
+      let alt = prompt('Alt text:', '');
       if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
     }
 
     function pasteAsPlainText() {
       if (navigator.clipboard && navigator.clipboard.readText) {
-        navigator.clipboard.readText()
-          .then(txt => execCmd('insertText', txt))
+        navigator.clipboard.readText().then(text => execCmd('insertText', text))
           .catch(() => {
-            const t = prompt('Paste text:');
-            if (t) execCmd('insertText', t);
+            let text = prompt('Paste text:');
+            if (text) execCmd('insertText', text);
           });
       } else {
-        const t = prompt('Paste text:');
-        if (t) execCmd('insertText', t);
+        let text = prompt('Paste text:');
+        if (text) execCmd('insertText', text);
       }
     }
 
     function openFile() {
-      fileInput.click();
+      document.getElementById('fileInput').click();
     }
-    function loadFile(e) {
-      const f = e.target.files[0];
-      if (!f) return;
+
+    function loadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
-      reader.onload = evt => {
-        editor.innerHTML = evt.target.result;
+      reader.onload = e => {
+        document.getElementById('editor').innerHTML = e.target.result;
         updateHTML();
       };
-      reader.readAsText(f);
+      reader.readAsText(file);
     }
 
     function handleTableSelection(e) {
       document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
-      const tbl = e.target.closest('table');
-      if (tbl) {
-        selectedTable = tbl;
-        tbl.classList.add('selected');
-        showTableControls(e.pageX, e.pageY);
+      let table = e.target.closest('table');
+      if (table) {
+        selectedTable = table;
+        table.classList.add('selected');
+        showTableControls(e);
       } else {
+        selectedTable = null;
         closeTableControls();
       }
     }
 
-    function showTableControls(x, y) {
-      const ctl = document.getElementById('tableControls');
-      ctl.style.display = 'block';
-      ctl.style.left = Math.min(x + 10, window.innerWidth - 280) + 'px';
-      ctl.style.top  = Math.min(y + 10, window.innerHeight - 250) + 'px';
-
-      document.getElementById('tableWidth').value        = parseInt(selectedTable.style.width) || '';
-      document.getElementById('tableBorder').value       = selectedTable.getAttribute('border') || 1;
-      document.getElementById('tableCellSpacing').value  = selectedTable.getAttribute('cellspacing') || 0;
-      document.getElementById('tableCellPadding').value  = selectedTable.getAttribute('cellpadding') || 8;
+    function showTableControls(e) {
+      const controls = document.getElementById('tableControls');
+      controls.style.display = 'block';
+      controls.style.left = Math.min(e.pageX + 10, window.innerWidth - 280) + 'px';
+      controls.style.top = Math.min(e.pageY + 10, window.innerHeight - 250) + 'px';
+      controls.querySelector('#tableWidth').value = parseInt(selectedTable.style.width) || '';
+      controls.querySelector('#tableBorder').value = selectedTable.getAttribute('border') || 1;
+      controls.querySelector('#tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
+      controls.querySelector('#tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
     }
 
     function applyTableSettings() {
       if (!selectedTable) return;
-      const w  = document.getElementById('tableWidth').value;
-      const b  = document.getElementById('tableBorder').value;
+      const w = document.getElementById('tableWidth').value;
+      const b = document.getElementById('tableBorder').value;
       const cs = document.getElementById('tableCellSpacing').value;
       const cp = document.getElementById('tableCellPadding').value;
-
-      if (w)  { selectedTable.style.width = w + 'px'; selectedTable.setAttribute('width', w); }
-      selectedTable.setAttribute('border',      b);
+      if (w) {
+        selectedTable.style.width = w + 'px';
+        selectedTable.setAttribute('width', w);
+      }
+      selectedTable.setAttribute('border', b);
       selectedTable.setAttribute('cellspacing', cs);
       selectedTable.setAttribute('cellpadding', cp);
-
-      selectedTable.querySelectorAll('td,th').forEach(cell => {
+      selectedTable.querySelectorAll('td, th').forEach(cell => {
         cell.style.padding = cp + 'px';
       });
-
       updateHTML();
       closeTableControls();
     }
 
     function closeTableControls() {
-      const ctl = document.getElementById('tableControls');
-      ctl.style.display = 'none';
+      document.getElementById('tableControls').style.display = 'none';
       if (selectedTable) selectedTable.classList.remove('selected');
       selectedTable = null;
     }
@@ -267,29 +244,29 @@ html_content = r"""
       setTimeout(updateHTML, 10);
     }
 
-    document.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        const map = { 'b':'bold', 'i':'italic', 'u':'underline' };
-        if (map[e.key]) {
-          e.preventDefault();
-          execCmd(map[e.key]);
+    document.addEventListener('keydown', function(event) {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
+        const map = { 'b': 'bold', 'i': 'italic', 'u': 'underline' };
+        if (map[event.key]) {
+          event.preventDefault();
+          execCmd(map[event.key]);
         }
       }
     });
 
-    document.addEventListener('click', e => {
-      const ctl = document.getElementById('tableControls');
-      if (ctl.style.display === 'block'
-          && !ctl.contains(e.target)
-          && !e.target.closest('table')) {
+    document.addEventListener('click', function(e) {
+      const controls = document.getElementById('tableControls');
+      if (!controls.contains(e.target) && !e.target.closest('table') && controls.style.display === 'block') {
         closeTableControls();
       }
     });
 
-    setTimeout(updateHTML, 100);
+    // Initial sync
+    setTimeout(() => { updateHTML(); }, 100);
   </script>
 </body>
 </html>
 """
 
+# Inject the HTML into Streamlit
 components.html(html_content, height=800, scrolling=True)
