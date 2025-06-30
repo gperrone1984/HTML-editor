@@ -5,22 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WYSIWYG HTML Editor</title>
   <style>
-    /* …all your existing CSS… */
-    .toolbar .table-props input {
-      width: 60px;
-      margin: 0 4px;
-      font-size: 12px;
-    }
-    .toolbar .table-props button {
-      padding: 4px 8px;
-      font-size: 12px;
-      margin-left: 6px;
-    }
+    /* … all your CSS from before … */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background:#fff; color:#333; }
+    .toolbar { /* same styling as before */ }
+    /* add any missing rules for .toolbar .table-props inputs/buttons */
+    /* etc. */
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <!-- …your buttons… -->
+    <!-- your formatting buttons… -->
     <div class="table-props">
       Width: <input type="number" id="propWidth" min="1" placeholder="px">
       Border: <input type="number" id="propBorder" min="0">
@@ -30,38 +25,102 @@
     </div>
   </div>
 
-  <!-- …the rest of your editor HTML… -->
+  <div class="divider"></div>
 
+  <div class="editor-container">
+    <div class="editor-panel">
+      <div class="panel-header">Visual</div>
+      <div id="editor" class="editor" contenteditable="true"></div>
+    </div>
+    <div class="editor-panel">
+      <div class="panel-header">HTML</div>
+      <textarea id="htmlEditor" class="html-editor"></textarea>
+    </div>
+  </div>
+
+  <!-- table-controls overlay… -->
+
+  <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
-    // Grab the new inputs & apply button
-    const propWidth       = document.getElementById("propWidth");
-    const propBorder      = document.getElementById("propBorder");
-    const propCellSpacing = document.getElementById("propCellSpacing");
-    const propCellPadding = document.getElementById("propCellPadding");
-    const applyPropsBtn   = document.getElementById("applyProps");
+    const editor = document.getElementById('editor');
+    const htmlEditor = document.getElementById('htmlEditor');
+    const propWidth = document.getElementById('propWidth');
+    const propBorder = document.getElementById('propBorder');
+    const propCellSpacing = document.getElementById('propCellSpacing');
+    const propCellPadding = document.getElementById('propCellPadding');
+    const applyPropsBtn = document.getElementById('applyProps');
+    let selectedTable = null;
+    let isUpdating = false;
 
-    // Call this whenever a table is selected
-    function updateToolbarInputs() {
-      if (!selectedTable) return;
-      propWidth.value       = selectedTable.getAttribute("width")      || "";
-      propBorder.value      = selectedTable.getAttribute("border")     || "";
-      propCellSpacing.value = selectedTable.getAttribute("cellspacing")|| "";
-      propCellPadding.value = selectedTable.getAttribute("cellpadding")|| "";
+    function execCmd(cmd, val=null) {
+      document.execCommand(cmd, false, val);
+      updateHTML();
+    }
+    function stripAttrs(html) {
+      return html.replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '');
+    }
+    function updateHTML() {
+      if(isUpdating) return;
+      isUpdating = true;
+      const raw = stripAttrs(editor.innerHTML);
+      htmlEditor.value = html_beautify(raw, { indent_size:2, wrap_line_length:80 });
+      setTimeout(()=> isUpdating=false, 10);
+    }
+    function updateVisual() {
+      if(isUpdating) return;
+      isUpdating = true;
+      editor.innerHTML = htmlEditor.value;
+      setTimeout(()=> isUpdating=false, 10);
     }
 
-    // When you click “Apply”, update the actual <table> attributes
-    applyPropsBtn.addEventListener("click", () => {
-      if (!selectedTable) return;
-      if (propWidth.value)       selectedTable.setAttribute("width", propWidth.value);
-      if (propBorder.value)      selectedTable.setAttribute("border", propBorder.value);
-      if (propCellSpacing.value) selectedTable.setAttribute("cellspacing", propCellSpacing.value);
-      if (propCellPadding.value) selectedTable.setAttribute("cellpadding", propCellPadding.value);
-      // Refresh HTML panel
+    // **Reliable selection → HTML sync**
+    document.addEventListener('selectionchange', ()=>{
+      const sel = window.getSelection();
+      if(!sel.rangeCount || sel.isCollapsed) return;
+      const container = sel.getRangeAt(0).commonAncestorContainer;
+      if(!editor.contains(container)) return;
+      const text = sel.toString().trim();
+      if(text.length < 2) return;
+      // fuzzy match across whitespace
+      const esc = text.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')
+                      .replace(/\s+/g,'\\s+');
+      const re = new RegExp(esc,'i');
+      const m = htmlEditor.value.match(re);
+      if(m) {
+        htmlEditor.focus();
+        htmlEditor.setSelectionRange(m.index, m.index + m[0].length);
+      }
+    });
+
+    // When a table is clicked…
+    editor.addEventListener('click', e=>{
+      document.querySelectorAll('table.selected').forEach(t=>t.classList.remove('selected'));
+      const tbl = e.target.closest('table');
+      if(tbl) {
+        selectedTable = tbl;
+        tbl.classList.add('selected');
+        // populate toolbar inputs:
+        propWidth.value       = tbl.getAttribute('width')      || '';
+        propBorder.value      = tbl.getAttribute('border')     || '';
+        propCellSpacing.value = tbl.getAttribute('cellspacing')|| '';
+        propCellPadding.value = tbl.getAttribute('cellpadding')|| '';
+      }
+    });
+
+    applyPropsBtn.addEventListener('click', ()=>{
+      if(!selectedTable) return;
+      if(propWidth.value)       selectedTable.setAttribute('width', propWidth.value);
+      if(propBorder.value)      selectedTable.setAttribute('border', propBorder.value);
+      if(propCellSpacing.value) selectedTable.setAttribute('cellspacing', propCellSpacing.value);
+      if(propCellPadding.value) selectedTable.setAttribute('cellpadding', propCellPadding.value);
       updateHTML();
     });
 
-    // In your existing showTableControls(x,y) function, at the end:
-    //    showTableControls(...) { …; updateToolbarInputs(); }
+    // hook up other buttons…
+    // e.g. document.getElementById('boldBtn').onclick = ()=> execCmd('bold');
+
+    // initialize
+    setTimeout(updateHTML, 100);
   </script>
 </body>
 </html>
