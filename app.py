@@ -4,10 +4,11 @@ import os
 
 st.set_page_config(page_title="WYSIWYG HTML Editor", layout="wide")
 
-# Load our external editor.html (must live in the same directory)
+# Load the external HTML/JS editor
 here = os.path.dirname(__file__)
-with open(os.path.join(here, "editor.html"), "r", encoding="utf-8") as f:
+path = os.path.join(here, "editor.html")
+with open(path, "r", encoding="utf-8") as f:
     html = f.read()
 
-# Render the editor
+# Embed it in Streamlit
 components.html(html, height=800, scrolling=True)
