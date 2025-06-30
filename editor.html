@@ -1,126 +1,154 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# Make page use full width
+st.set_page_config(page_title="WYSIWYG HTML Editor", layout="wide")
+
+# All of our editor’s HTML/CSS/JS in one string
+html_content = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WYSIWYG HTML Editor</title>
   <style>
-    /* … all your CSS from before … */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background:#fff; color:#333; }
-    .toolbar { /* same styling as before */ }
-    /* add any missing rules for .toolbar .table-props inputs/buttons */
-    /* etc. */
+    body { margin:0; font-family:Segoe UI, sans-serif; }
+    .toolbar {
+      padding:10px; background:#f5f5f5; border-bottom:1px solid #ccc;
+      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    }
+    .toolbar button, .toolbar select, .toolbar input {
+      font-size:12px; padding:4px; cursor:pointer;
+    }
+    .toolbar .table-props {
+      margin-left:auto; display:flex; gap:6px; align-items:center;
+    }
+    .editor-container { display:flex; height:calc(100vh - 50px); }
+    .panel {
+      flex:1; display:flex; flex-direction:column; border-right:1px solid #ddd;
+    }
+    .panel:last-child { border-right:none; }
+    .panel-header {
+      background:#e8e8e8; padding:8px; font-weight:bold; border-bottom:1px solid #ccc;
+    }
+    .editor, textarea {
+      flex:1; padding:10px; border:none; outline:none;
+      font-family:inherit; font-size:14px; line-height:1.4;
+      resize:none;
+    }
+    textarea { background:#fafafa; border-top:1px solid #ddd; }
+    table.selected { outline:2px solid #007acc !important; }
+    .controls { display:none; position:absolute; background:#fff; padding:10px; border:1px solid #007acc; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+    .controls input { width:100%; margin-bottom:8px; }
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <!-- your formatting buttons… -->
+    <button onclick="exec('bold')"><b>B</b></button>
+    <button onclick="exec('italic')"><i>I</i></button>
+    <button onclick="exec('underline')"><u>U</u></button>
+    <select onchange="exec('formatBlock', this.value)">
+      <option value="">Format</option>
+      <option value="h1">H1</option>
+      <option value="h2">H2</option>
+      <option value="p">P</option>
+    </select>
+    <button onclick="exec('insertUnorderedList')">&bull; UL</button>
+    <button onclick="exec('insertOrderedList')">1. OL</button>
+    <button onclick="insertTable()">Table</button>
     <div class="table-props">
-      Width: <input type="number" id="propWidth" min="1" placeholder="px">
-      Border: <input type="number" id="propBorder" min="0">
-      Cellspacing: <input type="number" id="propCellSpacing" min="0">
-      Cellpadding: <input type="number" id="propCellPadding" min="0">
+      W:<input type="number" id="propW" placeholder="px" min="1">
+      B:<input type="number" id="propB" min="0">
+      CS:<input type="number" id="propCS" min="0">
+      CP:<input type="number" id="propCP" min="0">
       <button id="applyProps">Apply</button>
     </div>
   </div>
 
-  <div class="divider"></div>
-
   <div class="editor-container">
-    <div class="editor-panel">
+    <div class="panel">
       <div class="panel-header">Visual</div>
-      <div id="editor" class="editor" contenteditable="true"></div>
+      <div id="visual" class="editor" contenteditable="true"></div>
     </div>
-    <div class="editor-panel">
+    <div class="panel">
       <div class="panel-header">HTML</div>
-      <textarea id="htmlEditor" class="html-editor"></textarea>
+      <textarea id="code" class="editor"></textarea>
     </div>
   </div>
 
-  <!-- table-controls overlay… -->
-
-  <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
-    const editor = document.getElementById('editor');
-    const htmlEditor = document.getElementById('htmlEditor');
-    const propWidth = document.getElementById('propWidth');
-    const propBorder = document.getElementById('propBorder');
-    const propCellSpacing = document.getElementById('propCellSpacing');
-    const propCellPadding = document.getElementById('propCellPadding');
-    const applyPropsBtn = document.getElementById('applyProps');
-    let selectedTable = null;
-    let isUpdating = false;
+    const vis = document.getElementById('visual');
+    const code = document.getElementById('code');
+    let selTable = null;
 
-    function execCmd(cmd, val=null) {
+    function exec(cmd, val=null){
       document.execCommand(cmd, false, val);
-      updateHTML();
+      syncToCode();
     }
-    function stripAttrs(html) {
-      return html.replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '');
+    function syncToCode(){
+      code.value = vis.innerHTML;
     }
-    function updateHTML() {
-      if(isUpdating) return;
-      isUpdating = true;
-      const raw = stripAttrs(editor.innerHTML);
-      htmlEditor.value = html_beautify(raw, { indent_size:2, wrap_line_length:80 });
-      setTimeout(()=> isUpdating=false, 10);
+    function syncToVis(){
+      vis.innerHTML = code.value;
     }
-    function updateVisual() {
-      if(isUpdating) return;
-      isUpdating = true;
-      editor.innerHTML = htmlEditor.value;
-      setTimeout(()=> isUpdating=false, 10);
+    vis.addEventListener('input', syncToCode);
+    code.addEventListener('input', syncToVis);
+
+    // Table insertion
+    function insertTable(){
+      const r = parseInt(prompt('Rows','2'),10);
+      const c = parseInt(prompt('Cols','2'),10);
+      if(r>0&&c>0){
+        let t='<table border="1" cellspacing="0" cellpadding="4">';
+        for(let i=0;i<r;i++){
+          t+='<tr>';
+          for(let j=0;j<c;j++){
+            t+='<td>Cell</td>';
+          }
+          t+='</tr>';
+        }
+        t+='</table>';
+        exec('insertHTML', t);
+      }
     }
 
-    // **Reliable selection → HTML sync**
-    document.addEventListener('selectionchange', ()=>{
-      const sel = window.getSelection();
-      if(!sel.rangeCount || sel.isCollapsed) return;
-      const container = sel.getRangeAt(0).commonAncestorContainer;
-      if(!editor.contains(container)) return;
-      const text = sel.toString().trim();
-      if(text.length < 2) return;
-      // fuzzy match across whitespace
-      const esc = text.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')
-                      .replace(/\s+/g,'\\s+');
-      const re = new RegExp(esc,'i');
-      const m = htmlEditor.value.match(re);
-      if(m) {
-        htmlEditor.focus();
-        htmlEditor.setSelectionRange(m.index, m.index + m[0].length);
+    // Click to select table
+    vis.addEventListener('click', e=>{
+      document.querySelectorAll('table').forEach(t=>t.classList.remove('selected'));
+      const t = e.target.closest('table');
+      if(t){
+        selTable = t;
+        t.classList.add('selected');
+        // populate props
+        document.getElementById('propW').value = t.getAttribute('width')||'';
+        document.getElementById('propB').value = t.getAttribute('border')||'';
+        document.getElementById('propCS').value= t.getAttribute('cellspacing')||'';
+        document.getElementById('propCP').value= t.getAttribute('cellpadding')||'';
       }
     });
 
-    // When a table is clicked…
-    editor.addEventListener('click', e=>{
-      document.querySelectorAll('table.selected').forEach(t=>t.classList.remove('selected'));
-      const tbl = e.target.closest('table');
-      if(tbl) {
-        selectedTable = tbl;
-        tbl.classList.add('selected');
-        // populate toolbar inputs:
-        propWidth.value       = tbl.getAttribute('width')      || '';
-        propBorder.value      = tbl.getAttribute('border')     || '';
-        propCellSpacing.value = tbl.getAttribute('cellspacing')|| '';
-        propCellPadding.value = tbl.getAttribute('cellpadding')|| '';
-      }
-    });
+    // Apply props
+    document.getElementById('applyProps').onclick = ()=>{
+      if(!selTable) return;
+      const w = document.getElementById('propW').value;
+      const b = document.getElementById('propB').value;
+      const cs= document.getElementById('propCS').value;
+      const cp= document.getElementById('propCP').value;
+      if(w) selTable.setAttribute('width', w);
+      if(b) selTable.setAttribute('border', b);
+      if(cs) selTable.setAttribute('cellspacing', cs);
+      if(cp) selTable.setAttribute('cellpadding', cp);
+      syncToCode();
+    };
 
-    applyPropsBtn.addEventListener('click', ()=>{
-      if(!selectedTable) return;
-      if(propWidth.value)       selectedTable.setAttribute('width', propWidth.value);
-      if(propBorder.value)      selectedTable.setAttribute('border', propBorder.value);
-      if(propCellSpacing.value) selectedTable.setAttribute('cellspacing', propCellSpacing.value);
-      if(propCellPadding.value) selectedTable.setAttribute('cellpadding', propCellPadding.value);
-      updateHTML();
-    });
-
-    // hook up other buttons…
-    // e.g. document.getElementById('boldBtn').onclick = ()=> execCmd('bold');
-
-    // initialize
-    setTimeout(updateHTML, 100);
+    // Initialize
+    vis.innerHTML = '<p>Start writing...</p>';
+    syncToCode();
   </script>
 </body>
 </html>
+"""
+
+# Render the editor in Streamlit
+components.html(html_content, height=800, scrolling=True)
