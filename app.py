@@ -28,28 +28,19 @@ html_content = r"""
     .panel-header { background: #f0f0f0; padding: 10px; font-weight: bold; border-bottom: 1px solid #ddd; }
     .editor, .html-editor { flex: 1; width: 100%; padding: 15px; border: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.6; background: white; overflow-y: auto; }
     .html-editor { font-family: Consolas, 'Courier New', monospace; background: #f8f8f8; white-space: pre-wrap; overflow-wrap: break-word; border: 1px solid #ddd; resize: none; }
-    .table-controls { display: none; position: fixed; background: white; border: 2px solid #007acc; padding: 15px; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 280px; }
-    .table-controls label { display: block; margin-bottom: 8px; font-weight: bold; }
-    .table-controls input, .table-controls select { width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 3px; }
+    .table-controls { display: none; position: fixed; background: white; border: 2px solid #007acc; padding: 15px; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 250px; }
+    .table-controls label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .table-controls input { width: 100%; padding: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 3px; }
     .table-controls button { margin-right: 5px; padding: 8px 12px; background: #007acc; color: white; border: none; border-radius: 3px; cursor: pointer; }
     .table-controls button:hover { background: #005999; }
     .table-controls .close-btn { background: #ccc; color: #333; }
     .table-controls .close-btn:hover { background: #999; }
     
-    /* Stili per evidenziazione sincronizzata */
-    .highlight-visual { background-color: rgba(255, 255, 0, 0.3) !important; }
-    .highlight-html { background-color: rgba(255, 255, 0, 0.3); }
-    
     /* Stili per tabella selezionata */
     table.selected { outline: 2px solid #007acc; background-color: rgba(0, 122, 204, 0.1); }
     
-    /* Stili per resize handles */
-    .resize-handle { position: absolute; background: #007acc; }
-    .resize-handle.right { width: 4px; height: 100%; right: -2px; top: 0; cursor: col-resize; }
-    .resize-handle.bottom { width: 100%; height: 4px; bottom: -2px; left: 0; cursor: row-resize; }
-    .resize-handle.corner { width: 8px; height: 8px; right: -4px; bottom: -4px; cursor: nw-resize; }
-    
-    table { position: relative; }
+    /* Evidenziazione selezione */
+    .html-highlight { background-color: #ffff99; }
   </style>
 </head>
 <body>
@@ -89,7 +80,6 @@ html_content = r"""
              oninput="updateHTML()"
              onkeyup="updateHTML()"
              onclick="handleTableSelection(event)"
-             onselectionchange="handleSelectionChange()"
              onmouseup="handleSelectionChange()"
              onpaste="handlePaste(event)">
           <h2>Inizia a scrivere...</h2>
@@ -106,10 +96,10 @@ html_content = r"""
     </div>
     <input type="file" id="fileInput" accept=".html,.txt" style="display:none" onchange="loadFile(event)">
     
-    <!-- Controlli tabella semplificati -->
+    <!-- Controlli tabella -->
     <div class="table-controls" id="tableControls">
       <label>Larghezza (px):</label>
-      <input type="number" id="tableWidth" min="1" placeholder="es. 500">
+      <input type="number" id="tableWidth" min="50" placeholder="es. 500">
       
       <label>Bordo (px):</label>
       <input type="number" id="tableBorder" min="0" value="1">
@@ -128,10 +118,9 @@ html_content = r"""
   <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
     let selectedTable = null;
-    let isUpdatingFromHTML = false;
-    let isUpdatingFromVisual = false;
+    let isUpdating = false;
     
-    function execCmd(cmd, val=null) {
+    function execCmd(cmd, val = null) {
       document.execCommand(cmd, false, val);
       updateHTML();
     }
@@ -141,45 +130,42 @@ html_content = r"""
     }
     
     function updateHTML() {
-      if (isUpdatingFromHTML) return;
-      isUpdatingFromVisual = true;
+      if (isUpdating) return;
+      isUpdating = true;
       
       let raw = stripAttrs(document.getElementById('editor').innerHTML);
       let formatted = html_beautify(raw, { indent_size: 2, wrap_line_length: 80 });
       document.getElementById('htmlEditor').value = formatted;
       
-      setTimeout(() => { isUpdatingFromVisual = false; }, 10);
+      setTimeout(() => { isUpdating = false; }, 10);
     }
     
     function updateVisual() {
-      if (isUpdatingFromVisual) return;
-      isUpdatingFromHTML = true;
+      if (isUpdating) return;
+      isUpdating = true;
       
       document.getElementById('editor').innerHTML = document.getElementById('htmlEditor').value;
       
-      setTimeout(() => { isUpdatingFromHTML = false; }, 10);
+      setTimeout(() => { isUpdating = false; }, 10);
     }
     
     // Gestione selezione sincronizzata
     function handleSelectionChange() {
-      if (isUpdatingFromHTML) return;
+      if (isUpdating) return;
       
-      setTimeout(() => {
-        const selection = window.getSelection();
-        if (selection.rangeCount === 0) return;
-        
-        const range = selection.getRangeAt(0);
-        if (range.collapsed) return;
-        
-        const selectedText = range.toString().trim();
-        if (selectedText.length < 3) return; // Ignora selezioni troppo corte
-        
-        // Evidenzia nel HTML
-        highlightInHTML(selectedText);
-      }, 100);
+      const selection = window.getSelection();
+      if (selection.rangeCount === 0 || selection.isCollapsed) return;
+      
+      const selectedText = selection.toString().trim();
+      if (selectedText.length < 2) return;
+      
+      // Trova e evidenzia nel HTML
+      highlightInHTML(selectedText);
     }
     
     function handleHTMLSelection() {
+      if (isUpdating) return;
+      
       const htmlEditor = document.getElementById('htmlEditor');
       const start = htmlEditor.selectionStart;
       const end = htmlEditor.selectionEnd;
@@ -187,123 +173,35 @@ html_content = r"""
       if (start === end) return;
       
       const selectedHTML = htmlEditor.value.substring(start, end).trim();
-      if (selectedHTML.length < 3) return;
+      if (selectedHTML.length < 2) return;
       
-      // Trova il testo corrispondente nel visual editor
-      highlightInVisual(selectedHTML);
-    }
-    
-    function clearHighlights() {
-      // Rimuovi evidenziazioni precedenti
-      const htmlEditor = document.getElementById('htmlEditor');
-      const currentValue = htmlEditor.value;
-      
-      // Rimuovi tag di evidenziazione dall'HTML
-      const cleanValue = currentValue.replace(/<mark class="highlight-html">/g, '').replace(/<\/mark>/g, '');
-      if (cleanValue !== currentValue) {
-        htmlEditor.value = cleanValue;
-      }
-    }
-    
-    function highlightInHTML(selectedText) {
-      const htmlEditor = document.getElementById('htmlEditor');
-      const htmlContent = htmlEditor.value;
-      
-      // Pulisci eventuali evidenziazioni precedenti
-      clearHighlights();
-      
-      // Cerca il testo nell'HTML e lo evidenzia
-      const escapedText = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Gestione selezione sincronizzata
-    function handleSelectionChange() {
-      if (isUpdatingFromHTML) return;
-      
-      const selection = window.getSelection();
-      if (selection.rangeCount === 0) return;
-      
-      const range = selection.getRangeAt(0);
-      const container = document.getElementById('editor');
-      
-      // Rimuovi evidenziazioni precedenti
-      clearHighlights();
-      
-      if (range.collapsed) return;
-      
-      // Trova il testo selezionato
-      const selectedText = range.toString().trim();
-      if (selectedText.length === 0) return;
-      
-      // Evidenzia nel HTML
-      highlightInHTML(selectedText);
-    }
-    
-    function handleHTMLSelection() {
-      const htmlEditor = document.getElementById('htmlEditor');
-      const selectedText = htmlEditor.value.substring(htmlEditor.selectionStart, htmlEditor.selectionEnd).trim();
-      
-      clearHighlights();
-      
-      if (selectedText.length > 0) {
-        highlightInVisual(selectedText);
-      }
-    }
-    
-    function clearHighlights() {
-      // Rimuovi evidenziazioni dall'editor visuale
-      document.querySelectorAll('.highlight-visual').forEach(el => {
-        el.classList.remove('highlight-visual');
-      });
-      
-      // Rimuovi evidenziazioni dall'HTML
-      const htmlEditor = document.getElementById('htmlEditor');
-      htmlEditor.classList.remove('highlight-html');
-    }
-    
-    function highlightInHTML(text) {
-      const htmlEditor = document.getElementById('htmlEditor');
-      const htmlContent = htmlEditor.value;
-      
-      if (htmlContent.includes(text)) {
-        htmlEditor.classList.add('highlight-html');
-        
-        // Trova la posizione del testo nell'HTML
-        const index = htmlContent.indexOf(text);
-        if (index !== -1) {
-          htmlEditor.setSelectionRange(index, index + text.length);
-        }
-      }
-    }
-    
-    function highlightInVisual(htmlText) {
-      // Evidenzia temporaneamente nell'editor visuale
-      const editor = document.getElementById('editor');
-      editor.classList.add('highlight-visual');
-      
-      setTimeout(() => {
-        editor.classList.remove('highlight-visual');
-      }, 2000);
-    }');
-      const regex = new RegExp(`(>${escapedText}<|>${escapedText}|${escapedText}<)`, 'gi');
-      
-      if (regex.test(htmlContent)) {
-        const index = htmlContent.search(regex);
-        if (index !== -1) {
-          htmlEditor.focus();
-          htmlEditor.setSelectionRange(index, index + selectedText.length);
-          htmlEditor.scrollTop = Math.max(0, (index / htmlContent.length) * htmlEditor.scrollHeight - htmlEditor.clientHeight / 2);
-        }
-      }
-    }
-    
-    function highlightInVisual(htmlText) {
-      // Rimuovi tag HTML per ottenere solo il testo
+      // Estrai il testo dal HTML selezionato
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = htmlText;
+      tempDiv.innerHTML = selectedHTML;
       const textContent = tempDiv.textContent || tempDiv.innerText || '';
       
-      if (textContent.length < 3) return;
+      if (textContent.trim().length > 0) {
+        highlightInVisual(textContent.trim());
+      }
+    }
+    
+    function highlightInHTML(searchText) {
+      const htmlEditor = document.getElementById('htmlEditor');
+      const htmlContent = htmlEditor.value.toLowerCase();
+      const searchLower = searchText.toLowerCase();
       
-      // Cerca e evidenzia nel visual editor
+      const index = htmlContent.indexOf(searchLower);
+      if (index !== -1) {
+        htmlEditor.focus();
+        htmlEditor.setSelectionRange(index, index + searchText.length);
+      }
+    }
+    
+    function highlightInVisual(searchText) {
       const editor = document.getElementById('editor');
+      const selection = window.getSelection();
+      
+      // Cerca il testo nell'editor visuale
       const walker = document.createTreeWalker(
         editor,
         NodeFilter.SHOW_TEXT,
@@ -313,18 +211,18 @@ html_content = r"""
       
       let node;
       while (node = walker.nextNode()) {
-        if (node.textContent.includes(textContent)) {
+        const nodeText = node.textContent.toLowerCase();
+        const searchLower = searchText.toLowerCase();
+        const index = nodeText.indexOf(searchLower);
+        
+        if (index !== -1) {
           const range = document.createRange();
-          const start = node.textContent.indexOf(textContent);
-          if (start !== -1) {
-            range.setStart(node, start);
-            range.setEnd(node, start + textContent.length);
-            
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-            break;
-          }
+          range.setStart(node, index);
+          range.setEnd(node, index + searchText.length);
+          
+          selection.removeAllRanges();
+          selection.addRange(range);
+          break;
         }
       }
     }
@@ -374,7 +272,7 @@ html_content = r"""
       reader.readAsText(file);
     }
     
-    // Gestione tabelle migliorata
+    // Gestione tabelle
     function handleTableSelection(e) {
       // Rimuovi selezione precedente
       document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
@@ -393,13 +291,13 @@ html_content = r"""
     function showTableControls(e) {
       const controls = document.getElementById('tableControls');
       controls.style.display = 'block';
-      controls.style.left = Math.min(e.pageX, window.innerWidth - 300) + 'px';
-      controls.style.top = Math.min(e.pageY, window.innerHeight - 200) + 'px';
+      controls.style.left = Math.min(e.pageX + 10, window.innerWidth - 280) + 'px';
+      controls.style.top = Math.min(e.pageY + 10, window.innerHeight - 250) + 'px';
       
       if (selectedTable) {
         // Carica valori correnti
         const currentWidth = selectedTable.style.width || selectedTable.getAttribute('width') || '';
-        const widthValue = currentWidth.replace('px', '').replace('%', '');
+        const widthValue = parseInt(currentWidth) || '';
         
         document.getElementById('tableWidth').value = widthValue;
         document.getElementById('tableBorder').value = selectedTable.getAttribute('border') || 1;
@@ -411,23 +309,26 @@ html_content = r"""
     function applyTableSettings() {
       if (!selectedTable) return;
       
-      // Applica larghezza in pixel
+      // Applica larghezza
       const widthValue = document.getElementById('tableWidth').value;
       if (widthValue) {
         selectedTable.style.width = widthValue + 'px';
-        selectedTable.setAttribute('width', widthValue + 'px');
+        selectedTable.setAttribute('width', widthValue);
       }
       
       // Applica altri attributi
-      selectedTable.setAttribute('border', document.getElementById('tableBorder').value);
-      selectedTable.setAttribute('cellspacing', document.getElementById('tableCellSpacing').value);
-      selectedTable.setAttribute('cellpadding', document.getElementById('tableCellPadding').value);
+      const border = document.getElementById('tableBorder').value;
+      const cellspacing = document.getElementById('tableCellSpacing').value;
+      const cellpadding = document.getElementById('tableCellPadding').value;
+      
+      selectedTable.setAttribute('border', border);
+      selectedTable.setAttribute('cellspacing', cellspacing);
+      selectedTable.setAttribute('cellpadding', cellpadding);
       
       // Applica padding alle celle
       const cells = selectedTable.querySelectorAll('td, th');
-      const padding = document.getElementById('tableCellPadding').value + 'px';
       cells.forEach(cell => {
-        cell.style.padding = padding;
+        cell.style.padding = cellpadding + 'px';
       });
       
       updateHTML();
@@ -479,15 +380,12 @@ html_content = r"""
     // Chiudi controlli tabella quando si clicca fuori
     document.addEventListener('click', function(e) {
       const controls = document.getElementById('tableControls');
-      const isClickInsideControls = controls.contains(e.target);
-      const isClickOnTable = e.target.closest('table');
-      
-      if (!isClickInsideControls && !isClickOnTable && controls.style.display === 'block') {
+      if (!controls.contains(e.target) && !e.target.closest('table') && controls.style.display === 'block') {
         closeTableControls();
       }
     });
     
-    // Inizializza l'editor
+    // Inizializza
     setTimeout(() => {
       updateHTML();
     }, 100);
