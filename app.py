@@ -18,6 +18,12 @@ html_content = r"""
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: #333; }
+
+    /* 👈 AGGIUNTO: margine per fedeltà visiva HTML */
+    p, ul, ol, h1, h2, h3, h4, h5, h6 {
+      margin-bottom: 1em;
+    }
+
     .container { width: 100%; margin: 0 auto; padding: 20px; }
     .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
     .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
