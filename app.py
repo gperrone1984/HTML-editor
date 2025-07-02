@@ -1,13 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Configura la pagina in modalità wide
-st.set_page_config(
-    page_title="HTML Editor",
-    layout="wide",
-)
+st.set_page_config(page_title="HTML Editor", layout="wide")
 
-# HTML/CSS/JS del editor
 html_content = r"""
 <!DOCTYPE html>
 <html lang="en">
@@ -19,7 +14,7 @@ html_content = r"""
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: #333; }
 
-    /* 👈 AGGIUNTO: margine per fedeltà visiva HTML */
+    /* Margin between elements for visual fidelity */
     p, ul, ol, h1, h2, h3, h4, h5, h6 {
       margin-bottom: 1em;
     }
@@ -71,13 +66,13 @@ html_content = r"""
     <div class="divider"></div>
     <div class="editor-container">
       <div class="editor-panel">
-        <div class="panel-header">Visual</div>
+        <div class="panel-header">Preview</div>
         <div id="editor" class="editor" contenteditable="true"
              oninput="updateHTML()"
              onkeyup="updateHTML()"
              onclick="handleTableSelection(event)"
              onpaste="handlePaste(event)">
-          <h2>Inizia a scrivere...</h2>
+          <h2>Start writing...</h2>
         </div>
       </div>
       <div class="editor-panel">
@@ -85,15 +80,15 @@ html_content = r"""
         <textarea id="htmlEditor" class="html-editor"
                   oninput="updateVisual()"
                   onkeyup="updateVisual()"
-                  placeholder="Codice HTML pulito..."></textarea>
+                  placeholder="Clean HTML code..."></textarea>
       </div>
     </div>
     <input type="file" id="fileInput" accept=".html,.txt" style="display:none" onchange="loadFile(event)">
     <div class="table-controls" id="tableControls">
       <label>Width (px or %):<input type="text" id="tableWidth"></label>
       <label>Border (px):<input type="number" id="tableBorder" min="0"></label>
-      <label>Cellspacing (px):<input type="number" id="tableCellSpacing" min="0"></label>
-      <label>Cellpadding (px):<input type="number" id="tableCellPadding" min="0"></label>
+      <label>Cell spacing (px):<input type="number" id="tableCellSpacing" min="0"></label>
+      <label>Cell padding (px):<input type="number" id="tableCellPadding" min="0"></label>
       <button onclick="applyTableSettings()">Apply</button>
       <button onclick="closeTableControls()">Close</button>
     </div>
@@ -117,21 +112,25 @@ html_content = r"""
       document.getElementById('editor').innerHTML = document.getElementById('htmlEditor').value;
     }
     function insertTable() {
-      let rows = prompt('Rows','3'), cols = prompt('Cols','3');
-      if(rows&&cols) {
+      let rows = prompt('Number of rows', '3'), cols = prompt('Number of columns', '3');
+      if (rows && cols) {
         let tbl = '<table border="1" cellpadding="8" cellspacing="0">';
-        for(let r=0;r<rows;r++){ tbl+='<tr>'; for(let c=0;c<cols;c++) tbl+='<td>Cell</td>'; tbl+='</tr>'; }
-        tbl+='</table>';
+        for (let r = 0; r < rows; r++) {
+          tbl += '<tr>';
+          for (let c = 0; c < cols; c++) tbl += '<td>Cell</td>';
+          tbl += '</tr>';
+        }
+        tbl += '</table>';
         execCmd('insertHTML', tbl);
       }
     }
     function insertLink() {
-      let url=prompt('URL','https://'), txt=prompt('Text','Link');
-      if(url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
+      let url = prompt('Enter URL', 'https://'), txt = prompt('Display text', 'Link');
+      if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
     }
     function insertImage() {
-      let url=prompt('Image URL',''), alt=prompt('Alt','');
-      if(url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
+      let url = prompt('Image URL', ''), alt = prompt('Alt text', '');
+      if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
     }
     function openFile() {
       document.getElementById('fileInput').click();
@@ -148,34 +147,55 @@ html_content = r"""
       reader.readAsText(file);
     }
     function handleTableSelection(e) {
-      document.querySelectorAll('table.selected').forEach(t=>t.classList.remove('selected'));
+      document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
       let t = e.target.closest('table');
-      if(t) { selectedTable = t; t.classList.add('selected'); showTableControls(e); }
-      else { selectedTable=null; closeTableControls(); }
+      if (t) {
+        selectedTable = t;
+        t.classList.add('selected');
+        showTableControls(e);
+      } else {
+        selectedTable = null;
+        closeTableControls();
+      }
     }
     function showTableControls(e) {
       const ctl = document.getElementById('tableControls');
-      ctl.style.display='block'; ctl.style.left=e.pageX+'px'; ctl.style.top=e.pageY+'px';
-      document.getElementById('tableWidth').value = selectedTable.getAttribute('width')||selectedTable.style.width||'';
-      document.getElementById('tableBorder').value = selectedTable.getAttribute('border')||1;
-      document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing')||0;
-      document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding')||8;
+      ctl.style.display = 'block';
+      ctl.style.left = e.pageX + 'px';
+      ctl.style.top = e.pageY + 'px';
+      document.getElementById('tableWidth').value = selectedTable.getAttribute('width') || selectedTable.style.width || '';
+      document.getElementById('tableBorder').value = selectedTable.getAttribute('border') || 1;
+      document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
+      document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
     }
     function applyTableSettings() {
-      if(!selectedTable) return;
-      selectedTable.style.width = document.getElementById('tableWidth').value;
+      if (!selectedTable) return;
+      const width = document.getElementById('tableWidth').value;
+      selectedTable.setAttribute('width', width);  // ensures width is applied
+      selectedTable.style.width = width;
       selectedTable.setAttribute('border', document.getElementById('tableBorder').value);
       selectedTable.setAttribute('cellspacing', document.getElementById('tableCellSpacing').value);
       selectedTable.setAttribute('cellpadding', document.getElementById('tableCellPadding').value);
-      updateHTML(); closeTableControls();
+      updateHTML();
+      closeTableControls();
     }
-    function closeTableControls() { document.getElementById('tableControls').style.display='none'; if(selectedTable) selectedTable.classList.remove('selected'); }
-    function handlePaste(e){ setTimeout(updateHTML,10); }
-    function pasteAsPlainText(){ navigator.clipboard.readText().then(t=>execCmd('insertText',t)).catch(_=>{ let t=prompt('Paste text'); execCmd('insertText',t); }); }
+    function closeTableControls() {
+      document.getElementById('tableControls').style.display = 'none';
+      if (selectedTable) selectedTable.classList.remove('selected');
+    }
+    function handlePaste(e) { setTimeout(updateHTML, 10); }
+    function pasteAsPlainText() {
+      navigator.clipboard.readText().then(t => execCmd('insertText', t)).catch(_ => {
+        let t = prompt('Paste text');
+        execCmd('insertText', t);
+      });
+    }
     document.addEventListener('keydown', function(event) {
-      if ((event.ctrlKey||event.metaKey)&&!event.shiftKey) {
-        if (event.key==='b'||event.key==='i'||event.key==='u') {
-          event.preventDefault(); execCmd({b:'bold',i:'italic',u:'underline'}[event.key]); }
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
+        if (event.key === 'b' || event.key === 'i' || event.key === 'u') {
+          event.preventDefault();
+          execCmd({ b: 'bold', i: 'italic', u: 'underline' }[event.key]);
+        }
       }
     });
   </script>
@@ -183,5 +203,4 @@ html_content = r"""
 </html>
 """
 
-# Inietta il componente HTML in Streamlit
 components.html(html_content, height=800, scrolling=True)
