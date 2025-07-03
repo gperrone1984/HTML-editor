@@ -13,25 +13,29 @@ html_content = r"""
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: #333; }
-
-    /* Margin between elements for visual fidelity */
-    p, ul, ol, h1, h2, h3, h4, h5, h6 {
-      margin-bottom: 1em;
-    }
+    p, ul, ol, h1, h2, h3, h4, h5, h6 { margin-bottom: 1em; }
 
     .container { width: 100%; margin: 0 auto; padding: 20px; }
     .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-    .toolbar button, .toolbar select, .toolbar input[type="color"], .toolbar input[type="text"] { font-size: 12px; padding: 5px; }
+    .toolbar {
+      background: #f5f5f5; padding: 10px; border: 1px solid #ddd;
+      border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    }
+    .toolbar button, .toolbar select, .toolbar input[type="color"], .toolbar input[type="text"] {
+      font-size: 12px; padding: 5px;
+    }
     .divider { width: 100%; height: 2px; background: #000; margin: 15px 0; }
     .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; }
     .editor-panel { border: 1px solid #ddd; border-radius: 5px; display: flex; flex-direction: column; overflow: hidden; }
     .panel-header { background: #f0f0f0; padding: 10px; font-weight: bold; border-bottom: 1px solid #ddd; }
-    .editor, .html-editor { flex: 1; width: 100%; padding: 15px; border: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.6; background: white; overflow-y: auto; }
-    .html-editor { font-family: Consolas, 'Courier New', monospace; background: #f8f8f8; white-space: pre-wrap; overflow-wrap: break-word; border: 1px solid #ddd; resize: none; }
-    .table-controls { display: none; position: fixed; background: white; border: 2px solid #007acc; padding: 15px; border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 250px; }
-    .table-controls label, .table-controls input { display: block; width: 100%; margin-bottom: 8px; }
-    .table-controls button { margin-right: 5px; }
+    .editor, .html-editor {
+      flex: 1; width: 100%; padding: 15px; border: none; outline: none;
+      font-family: inherit; font-size: 14px; line-height: 1.6; background: white; overflow-y: auto;
+    }
+    .html-editor {
+      font-family: Consolas, 'Courier New', monospace; background: #f8f8f8;
+      white-space: pre-wrap; overflow-wrap: break-word; border: 1px solid #ddd; resize: none;
+    }
   </style>
 </head>
 <body>
@@ -72,51 +76,43 @@ html_content = r"""
       <div class="editor-panel">
         <div class="panel-header">Preview</div>
         <div id="editor" class="editor" contenteditable="true"
-             oninput="updateHTML()"
-             onkeyup="updateHTML()"
-             onclick="handleTableSelection(event)"
-             onpaste="handlePaste(event)">
+             oninput="updateHTML()" onkeyup="updateHTML()" onpaste="handlePaste(event)">
           <h2>Start writing...</h2>
         </div>
       </div>
       <div class="editor-panel">
         <div class="panel-header">HTML</div>
         <textarea id="htmlEditor" class="html-editor"
-                  oninput="updateVisual()"
-                  onkeyup="updateVisual()"
+                  oninput="updateVisual()" onkeyup="updateVisual()"
                   placeholder="Clean HTML code..."></textarea>
       </div>
     </div>
     <input type="file" id="fileInput" accept=".html,.txt" style="display:none" onchange="loadFile(event)">
-    <div class="table-controls" id="tableControls">
-      <label>Width (px or %):<input type="text" id="tableWidth"></label>
-      <label>Border (px):<input type="number" id="tableBorder" min="0"></label>
-      <label>Cell spacing (px):<input type="number" id="tableCellSpacing" min="0"></label>
-      <label>Cell padding (px):<input type="number" id="tableCellPadding" min="0"></label>
-      <button onclick="applyTableSettings()">Apply</button>
-      <button onclick="closeTableControls()">Close</button>
-    </div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.0/js/lib/beautify-html.js"></script>
   <script>
-    let selectedTable = null;
     function execCmd(cmd, val=null) {
       document.execCommand(cmd, false, val);
       updateHTML();
     }
+
     function stripAttrs(html) {
       return html
-        .replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '')  // rimuove attributi
-        .replace(/<\/?span[^>]*>/g, '');  // rimuove tag <span>
+        .replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '')
+        .replace(/<\/?span[^>]*>/g, '');
     }
+
     function updateHTML() {
       let raw = stripAttrs(document.getElementById('editor').innerHTML);
       let formatted = html_beautify(raw, { indent_size: 2, wrap_line_length: 80 });
       document.getElementById('htmlEditor').value = formatted;
     }
+
     function updateVisual() {
       document.getElementById('editor').innerHTML = document.getElementById('htmlEditor').value;
     }
+
     function insertTable() {
       let rows = prompt('Number of rows', '3'), cols = prompt('Number of columns', '3');
       if (rows && cols) {
@@ -130,17 +126,21 @@ html_content = r"""
         execCmd('insertHTML', tbl);
       }
     }
+
     function insertLink() {
       let url = prompt('Enter URL', 'https://'), txt = prompt('Display text', 'Link');
       if (url) execCmd('insertHTML', `<a href="${url}" target="_blank">${txt}</a>`);
     }
+
     function insertImage() {
       let url = prompt('Image URL', ''), alt = prompt('Alt text', '');
       if (url) execCmd('insertHTML', `<img src="${url}" alt="${alt}" style="max-width:100%;height:auto;">`);
     }
+
     function openFile() {
       document.getElementById('fileInput').click();
     }
+
     function loadFile(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -152,22 +152,48 @@ html_content = r"""
       };
       reader.readAsText(file);
     }
-    function handleTableSelection(e) {
-      document.querySelectorAll('table.selected').forEach(t => t.classList.remove('selected'));
-      let t = e.target.closest('table');
-      if (t) {
-        selectedTable = t;
-        t.classList.add('selected');
-        showTableControls(e);
-      } else {
-        selectedTable = null;
-        closeTableControls();
-      }
+
+    function handlePaste(e) { setTimeout(updateHTML, 10); }
+
+    function pasteAsPlainText() {
+      navigator.clipboard.readText().then(t => execCmd('insertText', t)).catch(_ => {
+        let t = prompt('Paste text');
+        execCmd('insertText', t);
+      });
     }
-    function showTableControls(e) {
-      const ctl = document.getElementById('tableControls');
-      ctl.style.display = 'block';
-      ctl.style.left = e.pageX + 'px';
-      ctl.style.top = e.pageY +
-::contentReference[oaicite:0]{index=0}
- 
+
+    function findText() {
+      const textToFind = document.getElementById("findText").value;
+      if (!textToFind) return;
+      const editor = document.getElementById("editor");
+      const innerHTML = editor.innerHTML;
+      const regex = new RegExp(`(${textToFind})`, 'gi');
+      const highlighted = innerHTML.replace(regex, '<mark>$1</mark>');
+      editor.innerHTML = highlighted;
+      updateHTML();
+    }
+
+    function findAndReplace() {
+      const find = document.getElementById("findText").value;
+      const replace = document.getElementById("replaceText").value;
+      if (!find) return;
+      const editor = document.getElementById("editor");
+      const regex = new RegExp(find, 'gi');
+      editor.innerHTML = editor.innerHTML.replace(regex, replace);
+      updateHTML();
+    }
+
+    document.addEventListener('keydown', function(event) {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
+        if (event.key === 'b' || event.key === 'i' || event.key === 'u') {
+          event.preventDefault();
+          execCmd({ b: 'bold', i: 'italic', u: 'underline' }[event.key]);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+"""
+
+components.html(html_content, height=800, scrolling=True)
