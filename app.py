@@ -99,8 +99,10 @@ html_content = r"""
 
     function stripAttrs(html) {
       return html
-        .replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '')
-        .replace(/<\/?span[^>]*>/g, '');
+        .replace(/<!--\[if !supportLists\]-->.*?<!--\[endif\]-->/gi, '')
+        .replace(/<\/?o:p>/gi, '')
+        .replace(/<\/?span[^>]*>/gi, '')
+        .replace(/\s*(class|style|id)=("[^"]*"|'[^']*')/gi, '');
     }
 
     function updateHTML() {
