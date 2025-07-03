@@ -22,7 +22,7 @@ html_content = r"""
     .container { width: 100%; margin: 0 auto; padding: 20px; }
     .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
     .toolbar { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-    .toolbar button, .toolbar select, .toolbar input[type="color"] { font-size: 12px; }
+    .toolbar button, .toolbar select, .toolbar input[type="color"], .toolbar input[type="text"] { font-size: 12px; padding: 5px; }
     .divider { width: 100%; height: 2px; background: #000; margin: 15px 0; }
     .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 600px; }
     .editor-panel { border: 1px solid #ddd; border-radius: 5px; display: flex; flex-direction: column; overflow: hidden; }
@@ -62,6 +62,10 @@ html_content = r"""
       <button onclick="execCmd('undo')">↶</button>
       <button onclick="execCmd('redo')">↷</button>
       <button onclick="openFile()">Open</button>
+      <input type="text" id="findText" placeholder="Find" style="width:100px;">
+      <input type="text" id="replaceText" placeholder="Replace" style="width:100px;">
+      <button onclick="findText()">Find</button>
+      <button onclick="findAndReplace()">Replace</button>
     </div>
     <div class="divider"></div>
     <div class="editor-container">
@@ -101,7 +105,9 @@ html_content = r"""
       updateHTML();
     }
     function stripAttrs(html) {
-      return html.replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '');
+      return html
+        .replace(/\s*(?:class|style|id)=(?:"[^"]*"|'[^']*')/g, '')  // rimuove attributi
+        .replace(/<\/?span[^>]*>/g, '');  // rimuove tag <span>
     }
     function updateHTML() {
       let raw = stripAttrs(document.getElementById('editor').innerHTML);
@@ -162,45 +168,6 @@ html_content = r"""
       const ctl = document.getElementById('tableControls');
       ctl.style.display = 'block';
       ctl.style.left = e.pageX + 'px';
-      ctl.style.top = e.pageY + 'px';
-      document.getElementById('tableWidth').value = selectedTable.getAttribute('width') || selectedTable.style.width || '';
-      document.getElementById('tableBorder').value = selectedTable.getAttribute('border') || 1;
-      document.getElementById('tableCellSpacing').value = selectedTable.getAttribute('cellspacing') || 0;
-      document.getElementById('tableCellPadding').value = selectedTable.getAttribute('cellpadding') || 8;
-    }
-    function applyTableSettings() {
-      if (!selectedTable) return;
-      const width = document.getElementById('tableWidth').value;
-      selectedTable.setAttribute('width', width);  // ensures width is applied
-      selectedTable.style.width = width;
-      selectedTable.setAttribute('border', document.getElementById('tableBorder').value);
-      selectedTable.setAttribute('cellspacing', document.getElementById('tableCellSpacing').value);
-      selectedTable.setAttribute('cellpadding', document.getElementById('tableCellPadding').value);
-      updateHTML();
-      closeTableControls();
-    }
-    function closeTableControls() {
-      document.getElementById('tableControls').style.display = 'none';
-      if (selectedTable) selectedTable.classList.remove('selected');
-    }
-    function handlePaste(e) { setTimeout(updateHTML, 10); }
-    function pasteAsPlainText() {
-      navigator.clipboard.readText().then(t => execCmd('insertText', t)).catch(_ => {
-        let t = prompt('Paste text');
-        execCmd('insertText', t);
-      });
-    }
-    document.addEventListener('keydown', function(event) {
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
-        if (event.key === 'b' || event.key === 'i' || event.key === 'u') {
-          event.preventDefault();
-          execCmd({ b: 'bold', i: 'italic', u: 'underline' }[event.key]);
-        }
-      }
-    });
-  </script>
-</body>
-</html>
-"""
-
-components.html(html_content, height=800, scrolling=True)
+      ctl.style.top = e.pageY +
+::contentReference[oaicite:0]{index=0}
+ 
